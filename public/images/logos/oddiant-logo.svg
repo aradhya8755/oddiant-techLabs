@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="400" viewBox="0 0 800 400" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" fill-rule="evenodd">
+    <!-- Logo components -->
+    <g transform="translate(200, 130)" fill="#FFFFFF">
+      <!-- Letter O -->
+      <circle cx="40" cy="40" r="40" />
+
+      <!-- Letter D first part -->
+      <rect x="100" y="0" width="40" height="80" />
+
+      <!-- Letter D second part (rounded edge) -->
+      <path d="M140,0 C160,0 180,20 180,40 C180,60 160,80 140,80 L140,0 Z" />
+
+      <!-- Letter D second part (rounded edge) -->
+      <path d="M200,0 C220,0 240,20 240,40 C240,60 220,80 200,80 L200,0 Z" />
+
+      <!-- Letter i -->
+      <rect x="260" y="0" width="20" height="80" />
+      <circle cx="270" cy="-15" r="10" />
+
+      <!-- Letter a -->
+      <path d="M300,30 L300,80 L320,80 L320,30 C320,15 335,15 340,30 L340,80 L360,80 L360,30 C360,0 300,0 300,30 Z" />
+
+      <!-- Letter n -->
+      <rect x="380" y="30" width="20" height="50" />
+      <path d="M400,30 C420,30 420,50 420,50 L420,80 L440,80 L440,50 C440,0 380,0 380,30 L380,30 Z" />
+
+      <!-- Letter t -->
+      <rect x="460" y="0" width="20" height="80" />
+      <rect x="445" y="30" width="50" height="20" />
+
+      <!-- Dot for the t -->
+      <circle cx="470" cy="95" r="10" />
+    </g>
+
+    <!-- TECHLABS text -->
+    <text x="400" y="270" font-family="Arial, sans-serif" font-size="50" text-anchor="middle" fill="#FFFFFF">TECHLABS</text>
+  </g>
+</svg>
