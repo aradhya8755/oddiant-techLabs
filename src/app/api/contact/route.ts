@@ -23,29 +23,16 @@ export async function POST(request: NextRequest) {
     // Parse the request body with error handling
     let body
     try {
-      const text = await request.text()
-      console.log("Request body text:", text)
-
-      if (!text) {
-        return NextResponse.json({ success: false, message: "Empty request body" }, { status: 400 })
-      }
-
-      try {
-        body = JSON.parse(text)
-      } catch (parseError) {
-        console.error("Error parsing JSON:", parseError)
-        return NextResponse.json({ success: false, message: "Invalid JSON format" }, { status: 400 })
-      }
+      body = await request.json()
+      console.log("Request body parsed successfully:", body)
     } catch (error) {
-      console.error("Error reading request body:", error)
-      return NextResponse.json({ success: false, message: "Failed to read request body" }, { status: 400 })
+      console.error("Error parsing request body:", error)
+      return NextResponse.json({ success: false, message: "Invalid request format" }, { status: 400 })
     }
-
-    // Log the parsed body
-    console.log("Parsed body:", body)
 
     // Validate required fields
     if (!body.name || !body.email || !body.service || !body.message) {
+      console.error("Missing required fields:", body)
       return NextResponse.json({ success: false, message: "Please fill in all required fields" }, { status: 400 })
     }
 
@@ -66,34 +53,29 @@ export async function POST(request: NextRequest) {
       await db.collection("contactSubmissions").insertOne(contactSubmission)
       console.log("Submission inserted successfully")
 
-      // Skip email sending if in development mode to avoid errors
-      if (process.env.NODE_ENV === "production") {
-        try {
-          // Generate Excel file
-          console.log("Generating Excel file...")
-          const excelBuffer = await generateExcel([contactSubmission])
-          console.log("Excel file generated successfully")
+      try {
+        // Generate Excel file
+        console.log("Generating Excel file...")
+        const excelBuffer = await generateExcel([contactSubmission])
+        console.log("Excel file generated successfully")
 
-          // Send email notification with Excel attachment
-          console.log("Sending email...")
-          await sendEmail({
-            subject: `New Contact Form Submission from ${body.name}`,
-            text: `You have received a new contact form submission from ${body.name} (${body.email}).\n\nService: ${body.service}\nMessage: ${body.message}`,
-            attachments: [
-              {
-                filename: `contact_submission_${new Date().toISOString().split("T")[0]}.xlsx`,
-                content: excelBuffer,
-              },
-            ],
-          })
-          console.log("Email sent successfully")
-        } catch (emailError) {
-          // Log but don't fail if email sending fails
-          console.error("Error with email or Excel generation:", emailError)
-          // Continue processing - we'll still return success since the DB entry was created
-        }
-      } else {
-        console.log("Skipping email sending in development mode")
+        // Send email notification with Excel attachment
+        console.log("Sending email...")
+        await sendEmail({
+          subject: `New Contact Form Submission from ${body.name}`,
+          text: `You have received a new contact form submission from ${body.name} (${body.email}).\n\nService: ${body.service}\nMessage: ${body.message}`,
+          attachments: [
+            {
+              filename: `contact_submission_${new Date().toISOString().split("T")[0]}.xlsx`,
+              content: excelBuffer,
+            },
+          ],
+        })
+        console.log("Email sent successfully")
+      } catch (emailError) {
+        // Log but don't fail if email sending fails
+        console.error("Error with email or Excel generation:", emailError)
+        // Continue processing - we'll still return success since the DB entry was created
       }
 
       // Return success response
