@@ -1,5 +1,5 @@
-"use client"
-
+"use client"  
+/*reduce hydration */
 import type React from "react"
 
 import { useState } from "react"
