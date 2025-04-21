@@ -3,8 +3,8 @@ import { connectToDatabase } from "@/lib/mongodb"
 import { generateExcel } from "@/lib/excel"
 import { sendEmail } from "@/lib/email"
 
-// Define allowed methods explicitly
-export const dynamic = "force-dynamic" // Prevent static optimization
+// Remove the dynamic export that's causing build errors
+// The runtime declaration is fine to keep
 export const runtime = "nodejs" // Use Node.js runtime, not Edge
 
 // Enable CORS with OPTIONS method

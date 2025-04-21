@@ -3,8 +3,8 @@ import { connectToDatabase } from "@/lib/mongodb"
 import { generateExcel } from "@/lib/excel"
 import { sendEmail } from "@/lib/email"
 
-// Remove the dynamic export that's causing build errors
-// export const dynamic = "force-dynamic"
+// We're not using any dynamic export here
+export const runtime = "nodejs" // Explicitly set Node.js runtime
 
 // Enable CORS with OPTIONS method
 export async function OPTIONS() {

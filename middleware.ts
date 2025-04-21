@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-// This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
-  // Get the pathname of the request (e.g. /, /about, /api/contact)
+  // Get the pathname of the request
   const path = request.nextUrl.pathname
 
   // Allow CORS for API routes
@@ -34,10 +33,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-// See "Matching Paths" below to learn more
+// Match all API routes
 export const config = {
-  matcher: [
-    // Match all API routes
-    "/api/:path*",
-  ],
+  matcher: ["/api/:path*"],
 }
