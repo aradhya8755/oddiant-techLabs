@@ -4,6 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Toaster, toast } from "sonner"
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faXTwitter, faFacebookF, faYoutube, faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -353,8 +355,9 @@ ${formData.message}
                       </div>
                       <div>
                         <h3 className="text-lg font-medium text-white">Phone</h3>
-                        <p className="text-white">+91 7300875549</p>
-                        <p className="text-white">+91 8755498866</p>
+                        <a href="tel:+917300875549" className="text-white hover:underline">+91 7300875549</a>
+                        <br />
+                        <a href="tel:+918755498866" className="text-white hover:underline">+91 8755498866</a>
                       </div>
                     </div>
 
@@ -376,9 +379,92 @@ ${formData.message}
                       </div>
                       <div>
                         <h3 className="text-lg font-medium text-white">Email</h3>
-                        <p className="text-white">hi@oddiant.com</p>
+                        <a href="mailto:hi@oddiant.com" className="text-white hover:underline">hi@oddiant.com</a>
                       </div>
                     </div>
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center text-green-400 flex-shrink-0">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="w-5 h-5"
+                        >
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-medium text-white">Office Location</h3>
+                        <a className="text-white hover:underline" href="https://maps.app.goo.gl/BBFMKuiDnabN2rPE6" target="_blank" rel="noopener noreferrer">D.D Puram Bareilly, Uttar Pradesh, India </a>  
+                        <br />
+                        <a className="text-white hover:underline" href="https://maps.app.goo.gl/bMVpmZkageHxXuc76" target="_blank" rel="noopener noreferrer">Sector-63 Noida, Uttar Pradesh, India</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="animate-fade-in pt-8">
+                  <h3 className="text-xl text-white font-bold mb-4">Business Hours</h3>
+                  <div className="space-y-2 text-white">
+                    <p className="flex justify-between">
+                      <span>Monday - Friday:</span>
+                      <span>9:30 AM - 6:30 PM IST</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>Saturday:</span>
+                      <span>Closed</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>Sunday:</span>
+                      <span>Closed</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="animate-fade-in pt-4">
+                  <h3 className="text-xl text-white font-bold mb-4">Follow Us</h3>
+                  <div className="flex space-x-4">
+                    <a href="https://linkedin.com" target="_blank" rel="noreferrer" aria-label="LinkedIn">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-6 h-6 text-blue-500 hover:text-white transition-colors"
+                      >
+                        <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />
+                      </svg>
+                    </a>
+                    <a href="https://twitter.com" target="_blank" rel="noreferrer" aria-label="Twitter">
+                      <FontAwesomeIcon
+                        icon={faXTwitter}
+                        className="w-6 h-6 text-zinc-400 hover:text-white transition-colors"
+                      />
+                    </a>
+                    <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook">
+                      <FontAwesomeIcon
+                        icon={faFacebookF}
+                        className="w-6 h-6 text-blue-500 hover:text-white transition-colors"
+                      />
+                    </a>
+
+                    <a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="YouTube">
+                      <FontAwesomeIcon
+                        icon={faYoutube}
+                        className="w-6 h-6 text-red-600 hover:text-white transition-colors"
+                      />
+                    </a>
+
+                    <a href="https://wa.me/your-number" target="_blank" rel="noreferrer" aria-label="WhatsApp">
+                      <FontAwesomeIcon
+                        icon={faWhatsapp}
+                        className="w-6 h-6 text-green-400 hover:text-white transition-colors"
+                      />
+                    </a>
                   </div>
                 </div>
               </div>
