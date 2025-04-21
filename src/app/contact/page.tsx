@@ -31,33 +31,36 @@ export default function ContactPage() {
     setIsSubmitting(true)
 
     try {
+      // Improved fetch with timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
+        signal: controller.signal,
       })
 
-      // Handle non-JSON responses
-      const contentType = response.headers.get("content-type")
-      let data
+      clearTimeout(timeoutId)
 
-      if (contentType && contentType.includes("application/json")) {
-        try {
-          data = await response.json()
-        } catch (error) {
-          console.error("Error parsing JSON response:", error)
-          throw new Error("Server returned an invalid response")
-        }
-      } else {
-        const textResponse = await response.text()
-        console.error("Non-JSON response:", textResponse)
-        throw new Error("Server returned a non-JSON response")
+      // Check if response is ok first
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`Server error (${response.status}):`, errorText)
+        throw new Error(`Server error: ${response.status}. Please try again later.`)
       }
 
-      if (!response.ok) {
-        throw new Error(data?.message || "Something went wrong")
+      // Handle response parsing with better error handling
+      let data
+      try {
+        data = await response.json()
+      } catch (error) {
+        console.error("Error parsing response:", error, "Response status:", response.status)
+        console.error("Response text:", await response.text().catch(() => "Could not read response text"))
+        throw new Error("Received invalid response from server. Please try again.")
       }
 
       toast.success("Message sent successfully! We'll get back to you soon.")
@@ -71,7 +74,15 @@ export default function ContactPage() {
       })
     } catch (error) {
       console.error("Error submitting form:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to send message. Please try again.")
+
+      // More specific error messages
+      if (error.name === "AbortError") {
+        toast.error("Request timed out. Please check your connection and try again.")
+      } else if (error instanceof TypeError && error.message.includes("fetch")) {
+        toast.error("Network error. Please check your connection and try again.")
+      } else {
+        toast.error(error instanceof Error ? error.message : "Failed to send message. Please try again.")
+      }
     } finally {
       setIsSubmitting(false)
     }

@@ -17,8 +17,16 @@ export async function connectToDatabase() {
   }
 
   try {
-    // Connect to the MongoDB database
-    const client = new MongoClient(uri)
+    // Connect to the MongoDB database with improved options
+    const client = new MongoClient(uri, {
+      // Add connection timeout
+      connectTimeoutMS: 10000,
+      // Add socket timeout
+      socketTimeoutMS: 30000,
+      // Add server selection timeout
+      serverSelectionTimeoutMS: 10000,
+    })
+
     await client.connect()
 
     const dbName = process.env.MONGODB_DB || "oddiant"

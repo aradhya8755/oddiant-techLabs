@@ -25,7 +25,7 @@ export async function sendEmail(options: EmailOptions) {
       throw new Error("Email configuration is missing. Please check your environment variables.")
     }
 
-    // Create a transporter
+    // Create a transporter with improved timeout settings
     const transporter = nodemailer.createTransport({
       host: emailHost,
       port: emailPort,
@@ -34,6 +34,15 @@ export async function sendEmail(options: EmailOptions) {
         user: emailUser,
         pass: emailPass,
       },
+      connectionTimeout: 10000, // 10 seconds
+      greetingTimeout: 10000, // 10 seconds
+      socketTimeout: 15000, // 15 seconds
+    })
+
+    // Verify connection configuration
+    await transporter.verify().catch((error) => {
+      console.error("Email transporter verification failed:", error)
+      throw new Error("Email configuration is invalid")
     })
 
     // Send the email

@@ -3,6 +3,18 @@ import { connectToDatabase } from "@/lib/mongodb"
 import { generateExcel } from "@/lib/excel"
 import { sendEmail } from "@/lib/email"
 
+// Add OPTIONS method to handle preflight requests
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  })
+}
+
 export async function POST(request: Request) {
   try {
     // Parse the request body with error handling
@@ -47,7 +59,15 @@ export async function POST(request: Request) {
         ],
       })
 
-      return NextResponse.json({ success: true, message: "Contact form submitted successfully" }, { status: 200 })
+      return NextResponse.json(
+        { success: true, message: "Contact form submitted successfully" },
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      )
     } catch (error) {
       console.error("Error processing contact form:", error)
       return NextResponse.json({ success: false, message: "Failed to process your request" }, { status: 500 })
