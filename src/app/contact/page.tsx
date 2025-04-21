@@ -20,6 +20,7 @@ export default function ContactPage() {
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [useEmailFallback, setUseEmailFallback] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -30,6 +31,48 @@ export default function ContactPage() {
     e.preventDefault()
     setIsSubmitting(true)
 
+    // If we're using the email fallback, handle it differently
+    if (useEmailFallback) {
+      try {
+        // Send email directly using mailto link
+        const subject = `Contact Form: ${formData.name} - ${formData.service}`
+        const body = `
+Name: ${formData.name}
+Email: ${formData.email}
+Phone: ${formData.phone || "Not provided"}
+Company: ${formData.company || "Not provided"}
+Service: ${formData.service}
+
+Message:
+${formData.message}
+        `.trim()
+
+        // Create mailto link
+        const mailtoLink = `mailto:hi@oddiant.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+
+        // Open email client
+        window.location.href = mailtoLink
+
+        toast.success("Email client opened. Please send the email to complete your submission.")
+
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          company: "",
+          service: "it-consulting",
+          message: "",
+        })
+      } catch (error) {
+        console.error("Error with fallback form:", error)
+        toast.error("Could not open email client. Please contact us directly at hi@oddiant.com")
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
+
     try {
       console.log("Submitting form data:", formData)
 
@@ -38,24 +81,6 @@ export default function ContactPage() {
       const apiUrl = `${origin}/api/contact`
 
       console.log("Submitting to API URL:", apiUrl)
-
-      // First, check if the API endpoint is accessible with a preflight OPTIONS request
-      try {
-        const preflightResponse = await fetch(apiUrl, {
-          method: "OPTIONS",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        })
-
-        console.log("Preflight response status:", preflightResponse.status)
-
-        if (!preflightResponse.ok) {
-          console.warn("Preflight request failed, but continuing with POST request")
-        }
-      } catch (preflightError) {
-        console.warn("Preflight request error, but continuing with POST request:", preflightError)
-      }
 
       // Use fetch with minimal options to avoid CORS issues
       const response = await fetch(apiUrl, {
@@ -87,7 +112,19 @@ export default function ContactPage() {
           }
         }
 
-        throw new Error(errorMessage)
+        // If we get a 405 error, offer to use the email fallback
+        if (response.status === 405) {
+          toast.error("The contact form is currently unavailable. Would you like to use your email client instead?", {
+            action: {
+              label: "Use Email",
+              onClick: () => setUseEmailFallback(true),
+            },
+            duration: 10000,
+          })
+        } else {
+          throw new Error(errorMessage)
+        }
+        return
       }
 
       // Try to parse the response as JSON
@@ -285,8 +322,14 @@ export default function ContactPage() {
                       disabled={isSubmitting}
                       className="w-full py-6 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
                     >
-                      {isSubmitting ? "Sending..." : "Send Message"}
+                      {isSubmitting ? "Sending..." : useEmailFallback ? "Send via Email Client" : "Send Message"}
                     </Button>
+
+                    {useEmailFallback && (
+                      <p className="text-xs text-center text-black mt-2">
+                        This will open your default email client with a pre-filled message.
+                      </p>
+                    )}
                   </form>
                 </CardContent>
               </Card>

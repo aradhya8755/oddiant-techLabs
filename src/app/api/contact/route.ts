@@ -3,9 +3,8 @@ import { connectToDatabase } from "@/lib/mongodb"
 import { generateExcel } from "@/lib/excel"
 import { sendEmail } from "@/lib/email"
 
-// Define allowed methods explicitly
-export const dynamic = "force-dynamic" // Prevent static optimization
-export const runtime = "nodejs" // Use Node.js runtime, not Edge
+// Remove the dynamic export that's causing build errors
+// export const dynamic = "force-dynamic"
 
 // Enable CORS with OPTIONS method
 export async function OPTIONS() {
