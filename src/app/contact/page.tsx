@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Toaster, toast } from "sonner"
-import FallbackForm from "./fallback-form"
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -18,31 +17,6 @@ export default function ContactPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [useEmailFallback, setUseEmailFallback] = useState(false)
-  const [apiAvailable, setApiAvailable] = useState(true)
-
-  // Check if the API is available on component mount
-  useEffect(() => {
-    const checkApiAvailability = async () => {
-      try {
-        const response = await fetch("/api/contact", {
-          method: "OPTIONS",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        })
-
-        setApiAvailable(response.ok)
-        if (!response.ok) {
-          console.warn("API endpoint not available, will use fallback form")
-        }
-      } catch (error) {
-        console.error("Error checking API availability:", error)
-        setApiAvailable(false)
-      }
-    }
-
-    checkApiAvailability()
-  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -53,8 +27,8 @@ export default function ContactPage() {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // If we're using the email fallback or API is not available, use the fallback form
-    if (useEmailFallback || !apiAvailable) {
+    // If we're using the email fallback, use the fallback form
+    if (useEmailFallback) {
       try {
         // Send email directly using mailto link
         const subject = `Contact Form: ${formData.name} - ${formData.service}`
@@ -142,7 +116,6 @@ ${formData.message}
 
         // If we get a 405 error, offer to use the email fallback
         if (response.status === 405) {
-          setApiAvailable(false)
           toast.error("The contact form is currently unavailable. Would you like to use your email client instead?", {
             action: {
               label: "Use Email",
@@ -163,24 +136,7 @@ ${formData.message}
         console.log("Response data:", data)
       } catch (jsonError) {
         console.error("Error parsing JSON response:", jsonError)
-
-        // Try to get the response as text
-        try {
-          const textResponse = await response.text()
-          console.log("Response as text:", textResponse)
-
-          // Try to parse it as JSON anyway
-          try {
-            data = JSON.parse(textResponse)
-            console.log("Parsed text response as JSON:", data)
-          } catch (parseError) {
-            console.error("Could not parse text as JSON:", parseError)
-            throw new Error("Received invalid response from server. Please try again.")
-          }
-        } catch (textError) {
-          console.error("Could not read response as text:", textError)
-          throw new Error("Failed to read server response. Please try again.")
-        }
+        throw new Error("Received invalid response from server. Please try again.")
       }
 
       toast.success(data?.message || "Message sent successfully! We'll get back to you soon.")
@@ -202,7 +158,6 @@ ${formData.message}
         toast.error("Request timed out. Please check your connection and try again.")
       } else if (error instanceof TypeError && error.message.includes("fetch")) {
         toast.error("Network error. Please check your connection and try again.")
-        setApiAvailable(false)
         toast.error("Would you like to use your email client instead?", {
           action: {
             label: "Use Email",
@@ -224,17 +179,10 @@ ${formData.message}
 
       {/* Hero Section */}
       <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full bg-zinc-900/30" />
-          <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-blue-500/10 rounded-full filter blur-3xl" />
-          <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full filter blur-3xl" />
-        </div>
-
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in">Contact Us</h1>
-            <p className="text-xl text-gray-300 animate-fade-in">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">Contact Us</h1>
+            <p className="text-xl text-gray-300">
               Get in touch with our team to discuss how we can help your business grow
             </p>
           </div>
@@ -246,125 +194,123 @@ ${formData.message}
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Contact Form */}
-            <div className="order-2 lg:order-1 animate-fade-in">
+            <div className="order-2 lg:order-1">
               <Card className="bg-gray-100 border-zinc-700">
                 <CardContent className="pt-6">
                   <h2 className="text-2xl font-bold mb-6 text-black">Send us a message</h2>
 
-                  {useEmailFallback || !apiAvailable ? (
-                    <FallbackForm onSuccess={() => toast.success("Email client opened successfully!")} />
-                  ) : (
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label htmlFor="name" className="text-sm font-medium text-black">
-                            Your Name <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            id="name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2 bg-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-                            placeholder="Enter Your Name"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <label htmlFor="email" className="text-sm font-medium text-black">
-                            Email Address <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2 bg-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-                            placeholder="user@oddiant.com"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label htmlFor="phone" className="text-sm font-medium text-black">
-                            Phone Number
-                          </label>
-                          <input
-                            type="tel"
-                            id="phone"
-                            name="phone"
-                            value={formData.phone}
-                            onChange={handleChange}
-                            className="w-full px-4 py-2 bg-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-                            placeholder="+91 1234567890"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <label htmlFor="company" className="text-sm font-medium text-black">
-                            Company Name
-                          </label>
-                          <input
-                            type="text"
-                            id="company"
-                            name="company"
-                            value={formData.company}
-                            onChange={handleChange}
-                            className="w-full px-4 py-2 bg-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-                            placeholder="Your Company"
-                          />
-                        </div>
-                      </div>
-
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label htmlFor="service" className="text-sm font-medium text-black">
-                          Service of Interest <span className="text-red-500">*</span>
+                        <label htmlFor="name" className="text-sm font-medium text-black">
+                          Your Name <span className="text-red-500">*</span>
                         </label>
-                        <select
-                          id="service"
-                          name="service"
-                          value={formData.service}
+                        <input
+                          type="text"
+                          id="name"
+                          name="name"
+                          value={formData.name}
                           onChange={handleChange}
                           required
                           className="w-full px-4 py-2 bg-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-                        >
-                          <option value="it-consulting">IT Consulting</option>
-                          <option value="hr-services">HR Services</option>
-                          <option value="recruitment">Recruitment</option>
-                          <option value="staffing">Staffing</option>
-                          <option value="other">Other</option>
-                        </select>
+                          placeholder="Enter Your Name"
+                        />
                       </div>
 
                       <div className="space-y-2">
-                        <label htmlFor="message" className="text-sm font-medium text-black">
-                          Your Message <span className="text-red-500">*</span>
+                        <label htmlFor="email" className="text-sm font-medium text-black">
+                          Email Address <span className="text-red-500">*</span>
                         </label>
-                        <textarea
-                          id="message"
-                          name="message"
-                          value={formData.message}
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
                           onChange={handleChange}
                           required
-                          rows={5}
                           className="w-full px-4 py-2 bg-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-                          placeholder="Tell us about your project or inquiry..."
-                        ></textarea>
+                          placeholder="user@oddiant.com"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label htmlFor="phone" className="text-sm font-medium text-black">
+                          Phone Number
+                        </label>
+                        <input
+                          type="tel"
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2 bg-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                          placeholder="+91 1234567890"
+                        />
                       </div>
 
-                      <Button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="w-full py-6 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+                      <div className="space-y-2">
+                        <label htmlFor="company" className="text-sm font-medium text-black">
+                          Company Name
+                        </label>
+                        <input
+                          type="text"
+                          id="company"
+                          name="company"
+                          value={formData.company}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2 bg-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                          placeholder="Your Company"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="service" className="text-sm font-medium text-black">
+                        Service of Interest <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        id="service"
+                        name="service"
+                        value={formData.service}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-2 bg-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                       >
-                        {isSubmitting ? "Sending..." : "Send Message"}
-                      </Button>
+                        <option value="it-consulting">IT Consulting</option>
+                        <option value="hr-services">HR Services</option>
+                        <option value="recruitment">Recruitment</option>
+                        <option value="staffing">Staffing</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
 
+                    <div className="space-y-2">
+                      <label htmlFor="message" className="text-sm font-medium text-black">
+                        Your Message <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        id="message"
+                        name="message"
+                        value={formData.message}
+                        onChange={handleChange}
+                        required
+                        rows={5}
+                        className="w-full px-4 py-2 bg-white border border-zinc-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                        placeholder="Tell us about your project or inquiry..."
+                      ></textarea>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-6 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+                    >
+                      {isSubmitting ? "Sending..." : useEmailFallback ? "Send via Email Client" : "Send Message"}
+                    </Button>
+
+                    {!useEmailFallback && (
                       <p className="text-xs text-center text-black mt-2">
                         Having trouble with the form?{" "}
                         <button
@@ -375,8 +321,8 @@ ${formData.message}
                           Use email client instead
                         </button>
                       </p>
-                    </form>
-                  )}
+                    )}
+                  </form>
                 </CardContent>
               </Card>
             </div>
@@ -384,7 +330,7 @@ ${formData.message}
             {/* Contact Information */}
             <div className="order-1 lg:order-2">
               <div className="space-y-8">
-                <div className="animate-fade-in">
+                <div>
                   <h2 className="text-2xl text-white font-bold mb-6">Contact Information</h2>
                   <p className="text-white mb-8">
                     Get in touch with us for any inquiries about our services, partnerships, or career opportunities.

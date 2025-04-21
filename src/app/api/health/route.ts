@@ -1,20 +1,16 @@
-import type { NextRequest } from "next/server"
+export const runtime = "nodejs"
 
-export const runtime = "edge"
-
-export async function GET(request: NextRequest) {
+export async function GET() {
   return new Response(JSON.stringify({ status: "ok" }), {
     status: 200,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
     },
   })
 }
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new Response(null, {
     status: 200,
     headers: {

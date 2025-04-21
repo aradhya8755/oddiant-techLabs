@@ -3,11 +3,12 @@ import { connectToDatabase } from "@/lib/mongodb"
 import { generateExcel } from "@/lib/excel"
 import { sendEmail } from "@/lib/email"
 
-// Use Edge runtime for better performance with API routes
-export const runtime = "edge"
+// Use Node.js runtime instead of Edge since we're using MongoDB and nodemailer
+// Edge runtime doesn't fully support these libraries
+export const runtime = "nodejs"
 
 // Enable CORS with OPTIONS method
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new Response(null, {
     status: 200,
     headers: {
