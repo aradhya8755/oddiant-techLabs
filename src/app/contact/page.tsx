@@ -39,10 +39,25 @@ export default function ContactPage() {
         body: JSON.stringify(formData),
       })
 
-      const data = await response.json()
+      // Handle non-JSON responses
+      const contentType = response.headers.get("content-type")
+      let data
+
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = await response.json()
+        } catch (error) {
+          console.error("Error parsing JSON response:", error)
+          throw new Error("Server returned an invalid response")
+        }
+      } else {
+        const textResponse = await response.text()
+        console.error("Non-JSON response:", textResponse)
+        throw new Error("Server returned a non-JSON response")
+      }
 
       if (!response.ok) {
-        throw new Error(data.message || "Something went wrong")
+        throw new Error(data?.message || "Something went wrong")
       }
 
       toast.success("Message sent successfully! We'll get back to you soon.")
@@ -261,7 +276,6 @@ export default function ContactPage() {
                       <div>
                         <h3 className="text-lg font-medium text-white">Email</h3>
                         <p className="text-white">hi@oddiant.com</p>
-                  
                       </div>
                     </div>
 
