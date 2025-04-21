@@ -3,8 +3,8 @@ import { connectToDatabase } from "@/lib/mongodb"
 import { generateExcel } from "@/lib/excel"
 import { sendEmail } from "@/lib/email"
 
-// Use Node.js runtime instead of Edge since we're using MongoDB and nodemailer
-// Edge runtime doesn't fully support these libraries
+// Use auto dynamic setting to ensure compatibility with nodejs runtime
+export const dynamic = "auto"
 export const runtime = "nodejs"
 
 // Enable CORS with OPTIONS method

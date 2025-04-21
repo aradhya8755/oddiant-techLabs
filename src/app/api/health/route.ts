@@ -1,3 +1,4 @@
+// Use auto dynamic setting instead of force-static
 export const dynamic = "auto"
 export const runtime = "nodejs"
 

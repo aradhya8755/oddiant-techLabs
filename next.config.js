@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  distDir: 'out', // optional: only keep if you're intentionally using a custom build dir
+  // Remove distDir: 'out' as it conflicts with Vercel's expected build output location
 
-  reactStrictMode: true, // optional but recommended
+  reactStrictMode: true,
 
   eslint: {
     ignoreDuringBuilds: true,
@@ -14,12 +14,7 @@ const nextConfig = {
 
   images: {
     unoptimized: true,
-    domains: [
-      "source.unsplash.com",
-      "images.unsplash.com",
-      "ext.same-assets.com",
-      "ugc.same-assets.com",
-    ],
+    domains: ["source.unsplash.com", "images.unsplash.com", "ext.same-assets.com", "ugc.same-assets.com"],
     remotePatterns: [
       {
         protocol: "https",
@@ -44,7 +39,11 @@ const nextConfig = {
     ],
   },
 
-  serverExternalPackages: ["mongoose", "exceljs", "nodemailer"],
+  // Use the correct property for external packages in Next.js 13+
+  experimental: {
+    serverComponentsExternalPackages: ["mongoose", "exceljs", "nodemailer"],
+  },
+
   async headers() {
     return [
       {
@@ -56,8 +55,8 @@ const nextConfig = {
           { key: "Access-Control-Max-Age", value: "86400" },
         ],
       },
-    ];
+    ]
   },
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
