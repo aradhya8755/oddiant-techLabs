@@ -3,11 +3,11 @@ import { connectToDatabase } from "@/lib/mongodb"
 import { generateExcel } from "@/lib/excel"
 import { sendEmail } from "@/lib/email"
 
-// We're not using any dynamic export here
-export const runtime = "nodejs" // Explicitly set Node.js runtime
+// Use Edge runtime for better performance with API routes
+export const runtime = "edge"
 
 // Enable CORS with OPTIONS method
-export async function OPTIONS() {
+export async function OPTIONS(request: NextRequest) {
   return new Response(null, {
     status: 200,
     headers: {
