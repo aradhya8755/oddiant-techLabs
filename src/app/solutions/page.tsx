@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,36 +27,49 @@ export default function SolutionsPage() {
       </section>
 
       {/* Services Overview */}
-      <section className="py-24 bg-gradient-to-r from-blue-500/20 to-purple-500/20">
+      <section className="py-24 bg-gradient-to-r from-blue-500/20 to-purple-500/20 relative">
+        {/* Flow Lines Decoration */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {/* Blue flow line */}
+          <div className="absolute top-[35%] left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-700 to-transparent transform -rotate-1"></div>
+
+          {/* Yellow flow line */}
+          <div className="absolute top-[65%] left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-800 to-transparent transform rotate-1"></div>
+
+          {/* Vertical connecting lines */}
+          <div className="absolute top-[36.2%] left-1/4 w-1 h-[28.4%] bg-gradient-to-b from-green-700 to-yellow-800"></div>
+          <div className="absolute top-[35%] left-2/4 w-1 h-[30.5%] bg-gradient-to-b from-green-700 to-yellow-800"></div>
+          <div className="absolute top-[33.9%] left-3/4 w-1 h-[32.7%] bg-gradient-to-b from-green-700 to-yellow-800"></div>
+        </div>
+
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {services.map((service) => (
-              <Card
-                key={service.id}
-                className="bg-white border-zinc-700 shadow-custom-shadow hover:shadow-hover-shadow hover:scale-105 transition-transform duration-300"
-              >
-                <CardHeader className="pb-4">
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400 mb-4 group-hover:bg-blue-500/30 transition-colors">
-                    {service.icon}
-                  </div>
-                  <CardTitle className="text-xl">{service.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-black mb-6">{service.shortDescription}</p>
-                  <Button
-                    asChild
-                    variant="link"
-                    className="p-0 text-md text-black bg-white rounded-md hover:bg-green-500 hover:text-white hover:no-underline"
-                  >
-                    <a href={`#${service.id}`}>Learn More</a>
-                  </Button>
-                </CardContent>
-              </Card>
+              <div key={service.id} className="group">
+                <Card className="bg-white border-zinc-700 transform transition-all duration-300 ease-in-out group-hover:scale-105 hover:shadow-xl relative z-10 h-full">
+                  <CardHeader className="pb-4">
+                    <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400 mb-4 group-hover:bg-blue-500/30 transition-colors">
+                      {service.icon}
+                    </div>
+                    <CardTitle className="text-xl">{service.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-black mb-6">{service.shortDescription}</p>
+                    <Button
+                      asChild
+                      variant="link"
+                      className="p-0 text-md text-black bg-white rounded-md hover:bg-green-500 hover:text-white hover:no-underline"
+                    >
+                      <a href={`#${service.id}`}>Learn More</a>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
             ))}
           </div>
         </div>
       </section>
-      {}
+
       {/* Detailed Service Sections */}
       {services.map((service, index) => (
         <section
@@ -106,7 +121,7 @@ export default function SolutionsPage() {
               </div>
 
               <div
-                className={`relative h-[350px] md:h-[400px] rounded-xl overflow-hidden animate-fade-in ${
+                className={`relative h-[350px] md:h-[400px] rounded-xl overflow-hidden animate-fade-in hover:scale-102 transition-all duration-300 ease-in-out ${
                   index % 2 === 0 ? "order-2 lg:order-2" : "order-2 lg:order-1"
                 }`}
               >
@@ -115,12 +130,7 @@ export default function SolutionsPage() {
                   <div className="grid grid-cols-2 gap-4 w-full">
                     {service.stats.map((stat, idx) => {
                       // Define color classes based on index
-                      const colorClasses = [
-                        "text-blue-400", 
-                        "text-green-400", 
-                        "text-purple-400", 
-                        "text-yellow-400",
-                      ]
+                      const colorClasses = ["text-blue-400", "text-green-400", "text-purple-400", "text-yellow-400"]
 
                       // Determine background color based on position
                       const bgColor =
@@ -195,7 +205,8 @@ const services = [
         <path d="M12 16v4" />
       </svg>
     ),
-    shortDescription: "IT Consulting provides expert guidance to optimize technology, improve efficiency, and support business growth through tailored IT solutions.",
+    shortDescription:
+      "IT Consulting provides expert guidance to optimize technology, improve efficiency, and support business growth through tailored IT solutions.",
     description:
       "Our IT consulting services empower businesses to harness technology for smarter operations and sustainable growth. We collaborate closely to align IT solutions with your business objectives and drive digital success.",
     offerings: [
@@ -235,7 +246,8 @@ const services = [
         <path d="M12 13h4" />
       </svg>
     ),
-    shortDescription: "HR Consulting offers expert advice on managing people, improving workplace culture, and aligning HR strategies with business goals. It helps organizations streamline recruitment, compliance, and employee development.",
+    shortDescription:
+      "HR Consulting offers expert advice on managing people, improving workplace culture, and aligning HR strategies with business goals. It helps organizations streamline recruitment, compliance, and employee development.",
     description:
       "We help businesses strengthen their people strategies by shaping effective HR frameworks and improving organizational culture. Our solutions ensure smooth HR operations, talent growth, and regulatory compliance.",
     offerings: [
@@ -273,9 +285,10 @@ const services = [
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     ),
-    shortDescription: "Recruitment & Manpower Consulting connects businesses with the right talent to meet their workforce needs. It streamlines hiring processes and ensures skilled candidates align with organizational goals.",
+    shortDescription:
+      "Recruitment & Manpower Consulting connects businesses with the right talent to meet their workforce needs. It streamlines hiring processes and ensures skilled candidates align with organizational goals.",
     description:
-      "We assist businesses in building strong teams by sourcing skilled professionals who align with your company’s goals and culture. Our recruitment solutions ensure faster hiring and long-term workforce stability.",
+      "We assist businesses in building strong teams by sourcing skilled professionals who align with your company's goals and culture. Our recruitment solutions ensure faster hiring and long-term workforce stability.",
     offerings: [
       "Strategic Talent Sourcing & Acquisition",
       "Industry-Specific Recruitment Solutions",
@@ -311,7 +324,8 @@ const services = [
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     ),
-    shortDescription: "Personality Development Program (PDP) enhances communication, confidence, and interpersonal skills. It helps individuals build a strong personal and professional presence.",
+    shortDescription:
+      "Personality Development Program (PDP) enhances communication, confidence, and interpersonal skills. It helps individuals build a strong personal and professional presence.",
     description:
       "Our PDP sessions are designed to boost self-confidence, enhance communication skills, and foster leadership qualities. We focus on shaping well-rounded individuals ready to excel in both personal and professional environments.",
     offerings: [

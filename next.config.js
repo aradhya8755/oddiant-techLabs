@@ -39,10 +39,8 @@ const nextConfig = {
     ],
   },
 
-  // Use the correct property for external packages in Next.js 13+
-  experimental: {
-    serverComponentsExternalPackages: ["mongoose", "exceljs", "nodemailer"],
-  },
+  // Correct property for external packages in newer Next.js versions
+  serverExternalPackages: ["mongoose", "exceljs", "nodemailer"],
 
   async headers() {
     return [
