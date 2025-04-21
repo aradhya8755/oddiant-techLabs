@@ -243,7 +243,7 @@ const teamMembers = [
 const certifications = [
   {
     name: "GST Registered",
-    logo: "/images/logos/gst-logo.png",
+    logo: "/images/logos/gst-1.png",
     description: "GST Number : 09AAJFO2188G1ZY",
   },
   // {

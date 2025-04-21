@@ -228,7 +228,7 @@ const services = [
 const certifications = [
   {
     name: "GST Registered",
-    logo: "/images/logos/gst-logo.png",
+    logo: "/images/logos/gst-1.png",
   },
   {
     name: "Startup India",
