@@ -1,7 +1,6 @@
-import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function SolutionsPage() {
   return (
@@ -17,9 +16,7 @@ export default function SolutionsPage() {
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in">
-              Our Solutions
-            </h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in">Our Solutions</h1>
             <p className="text-xl text-gray-300 animate-fade-in">
               Comprehensive services tailored to meet your business needs
             </p>
@@ -57,7 +54,7 @@ export default function SolutionsPage() {
           </div>
         </div>
       </section>
-{}
+      {}
       {/* Detailed Service Sections */}
       {services.map((service, index) => (
         <section
@@ -67,20 +64,12 @@ export default function SolutionsPage() {
         >
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <div
-                className={`${
-                  index % 2 === 0 ? "order-1 lg:order-1" : "order-1 lg:order-2"
-                }`}
-              >
-                <h2 className="text-3xl font-bold mb-6 animate-fade-in">
-                  {service.title}
-                </h2>
+              <div className={`${index % 2 === 0 ? "order-1 lg:order-1" : "order-1 lg:order-2"}`}>
+                <h2 className="text-3xl font-bold mb-6 animate-fade-in">{service.title}</h2>
                 <div className="prose prose-invert max-w-none animate-fade-in">
                   <p className="text-gray-300 mb-4">{service.description}</p>
 
-                  <h3 className="text-xl font-semibold mt-8 mb-4">
-                    What We Offer
-                  </h3>
+                  <h3 className="text-xl font-semibold mt-8 mb-4">What We Offer</h3>
 
                   <ul className="space-y-3">
                     {service.offerings.map((offering, idx) => (
@@ -107,7 +96,10 @@ export default function SolutionsPage() {
                 </div>
 
                 <div className="mt-8">
-                  <Button asChild className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-500">
+                  <Button
+                    asChild
+                    className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-500"
+                  >
                     <Link href="/contact">Get Started</Link>
                   </Button>
                 </div>
@@ -121,17 +113,38 @@ export default function SolutionsPage() {
                 <div className="absolute inset-0 bg-gradient-to-b from-blue-500/10 to-purple-500/10 mix-blend-overlay z-10" />
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-900/20 to-purple-900/20 z-0 flex items-center justify-center px-6">
                   <div className="grid grid-cols-2 gap-4 w-full">
-                    {service.stats.map((stat, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-zinc-700/50 rounded-lg p-4 text-center"
-                      >
-                        <p className="text-3xl font-bold text-white mb-1">
-                          {stat.value}
-                        </p>
-                        <p className="text-sm text-white">{stat.label}</p>
-                      </div>
-                    ))}
+                    {service.stats.map((stat, idx) => {
+                      // Define color classes based on index
+                      const colorClasses = [
+                        "text-blue-400", 
+                        "text-green-400", 
+                        "text-purple-400", 
+                        "text-yellow-400",
+                      ]
+
+                      // Determine background color based on position
+                      const bgColor =
+                        idx % 2 === 0
+                          ? Math.floor(idx / 2) % 2 === 0
+                            ? "bg-black"
+                            : "bg-white"
+                          : Math.floor(idx / 2) % 2 === 0
+                            ? "bg-white"
+                            : "bg-black"
+
+                      // Determine text color based on background
+                      const textColor = bgColor === "bg-black" ? "text-white" : "text-black"
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`${bgColor} rounded-lg p-6 text-center flex flex-col items-center justify-center transition-transform hover:scale-105 shadow-lg`}
+                        >
+                          <p className={`text-4xl font-bold ${colorClasses[idx]} mb-2`}>{stat.value}</p>
+                          <p className={`text-sm ${textColor}`}>{stat.label}</p>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -144,24 +157,22 @@ export default function SolutionsPage() {
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-6 animate-fade-in text-black">
-              Ready to Transform Your Business?
-            </h2>
+            <h2 className="text-3xl font-bold mb-6 animate-fade-in text-black">Ready to Transform Your Business?</h2>
             <p className="text-black mb-8 animate-fade-in">
-              Contact us today to discuss how Oddiant Techlabs can help you
-              achieve your business goals with our comprehensive solutions.
+              Contact us today to discuss how Oddiant Techlabs can help you achieve your business goals with our
+              comprehensive solutions.
             </p>
             <Button
               asChild
               className="rounded-full px-8 py-6 text-lg bg-black text-white hover:text-white hover:bg-green-500"
             >
-              <Link href="/contact">Contact Us</Link> 
+              <Link href="/contact">Contact Us</Link>
             </Button>
           </div>
         </div>
       </section>
     </div>
-  );
+  )
 }
 
 const services = [
@@ -184,17 +195,16 @@ const services = [
         <path d="M12 16v4" />
       </svg>
     ),
-    shortDescription:
-      "Strategic IT consulting to help businesses leverage technology for growth and innovation.",
+    shortDescription: "IT Consulting provides expert guidance to optimize technology, improve efficiency, and support business growth through tailored IT solutions.",
     description:
-      "Our IT consulting services help businesses navigate the digital landscape by providing expert guidance on technology strategy, implementation, and optimization. We work with you to identify opportunities for innovation and efficiency gains through technology.",
+      "Our IT consulting services empower businesses to harness technology for smarter operations and sustainable growth. We collaborate closely to align IT solutions with your business objectives and drive digital success.",
     offerings: [
-      "Technology Strategy and Digital Transformation",
-      "IT Infrastructure Assessment and Optimization",
-      "Cloud Computing Strategy and Migration",
-      "Cybersecurity Solutions and Risk Management",
-      "Custom Software Development and Integration",
-      "Data Analytics and Business Intelligence",
+      "Custom Website Design & Development",
+      "Responsive and Mobile-First Web Solutions",
+      "E-commerce Website Development",
+      "Web Application Development",
+      "Website Maintenance & Technical Support",
+      "CMS Development and Management",
     ],
     stats: [
       { value: "45+", label: "IT Projects Completed" },
@@ -205,7 +215,7 @@ const services = [
   },
   {
     id: "hr-services",
-    title: "HR Services",
+    title: "HR Consulting",
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -225,20 +235,19 @@ const services = [
         <path d="M12 13h4" />
       </svg>
     ),
-    shortDescription:
-      "Comprehensive HR services to streamline your human resources management and compliance.",
+    shortDescription: "HR Consulting offers expert advice on managing people, improving workplace culture, and aligning HR strategies with business goals. It helps organizations streamline recruitment, compliance, and employee development.",
     description:
-      "Our HR services encompass everything from policy development to compliance management, helping your organization build a strong foundation for your workforce. We provide strategic guidance and practical solutions to optimize your HR operations.",
+      "We help businesses strengthen their people strategies by shaping effective HR frameworks and improving organizational culture. Our solutions ensure smooth HR operations, talent growth, and regulatory compliance.",
     offerings: [
-      "HR Policy Development and Implementation",
-      "Performance Management Systems",
-      "Employee Relations and Conflict Resolution",
-      "Compliance Management and Auditing",
-      "HR Process Automation",
-      "Benefits Administration and Management",
+      "Talent Acquisition Strategy & Support",
+      "Employee Onboarding & Engagement Programs",
+      "Workforce Planning & Organizational Structuring",
+      "HR Compliance and Policy Advisory",
+      "Training & Development Frameworks",
+      "Compensation Planning & Employee Retention",
     ],
     stats: [
-      { value: "50+", label: "HR Projects" },
+      { value: "20+", label: "HR Projects" },
       { value: "95%", label: "Retention Rate" },
       { value: "100%", label: "Compliance Success" },
       { value: "15+", label: "Industries Served" },
@@ -246,7 +255,7 @@ const services = [
   },
   {
     id: "recruitment",
-    title: "Recruitment",
+    title: "Recruitment & Manpower Consulting",
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -264,17 +273,16 @@ const services = [
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     ),
-    shortDescription:
-      "Find the right talent for your organization with our specialized recruitment services.",
+    shortDescription: "Recruitment & Manpower Consulting connects businesses with the right talent to meet their workforce needs. It streamlines hiring processes and ensures skilled candidates align with organizational goals.",
     description:
-      "Our recruitment services connect your organization with top talent across various industries and roles. We use a combination of traditional and innovative recruitment methods to identify, attract, and secure the right candidates for your specific needs.",
+      "We assist businesses in building strong teams by sourcing skilled professionals who align with your company’s goals and culture. Our recruitment solutions ensure faster hiring and long-term workforce stability.",
     offerings: [
-      "Executive Search and Leadership Recruitment",
-      "Technical and IT Recruitment",
-      "Remote Workforce Recruitment",
-      "Contract and Temporary Staffing",
-      "Campus Recruitment Programs",
-      "Assessment and Skill Testing Services",
+      "Strategic Talent Sourcing & Acquisition",
+      "Industry-Specific Recruitment Solutions",
+      "Permanent & Project-Based Staffing",
+      "Workforce Planning & Resource Allocation",
+      "Employer Branding & Talent Engagement",
+      "Interview Coordination & Candidate Evaluation",
     ],
     stats: [
       { value: "500+", label: "Successful Placements" },
@@ -285,7 +293,7 @@ const services = [
   },
   {
     id: "staffing",
-    title: "Staffing",
+    title: "Personality Development Program (PDP)",
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -303,17 +311,16 @@ const services = [
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     ),
-    shortDescription:
-      "Flexible staffing solutions to meet your business demands and workforce requirements.",
+    shortDescription: "Personality Development Program (PDP) enhances communication, confidence, and interpersonal skills. It helps individuals build a strong personal and professional presence.",
     description:
-      "Our staffing services provide flexible workforce solutions to help you manage fluctuating demand, special projects, or seasonal peaks. We offer temporary, contract-to-hire, and permanent staffing solutions across a range of industries and specializations.",
+      "Our PDP sessions are designed to boost self-confidence, enhance communication skills, and foster leadership qualities. We focus on shaping well-rounded individuals ready to excel in both personal and professional environments.",
     offerings: [
-      "On-demand Workforce Solutions",
-      "Project-based Staffing",
-      "Temp-to-Hire Programs",
-      "Managed Service Provider (MSP) Solutions",
-      "Vendor Management Systems",
-      "Payroll and Benefits Administration",
+      "Communication & Public Speaking Skills",
+      "Confidence Building & Positive Thinking",
+      "Leadership & Team Collaboration Techniques",
+      "Interview Preparation & Grooming Skills",
+      "Emotional Intelligence & Stress Management",
+      "Time Management & Goal Setting Workshops",
     ],
     stats: [
       { value: "200+", label: "Active Contractors" },
@@ -322,4 +329,4 @@ const services = [
       { value: "98%", label: "Client Retention" },
     ],
   },
-];
+]

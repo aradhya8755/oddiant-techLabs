@@ -1,4 +1,4 @@
-"use client"
+"use client" /* to control hydration */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clients } from '../data';
@@ -78,20 +78,21 @@ const ClientsPlanetary = () => {
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-4xl font-bold text-gray-800 text-center">Our Clients</h2>
-          </div>
-          <div className="flex justify-center mb-8">
-          <button
+        <div className="text-center mb-8">
+          <h2 className="text-4xl font-bold text-gray-800">Our Clients</h2>
+        </div>
+        <p className="text-xl text-center text-gray-600 mb-16">Trusted by the world's most innovative companies</p>
+          
+          {/* <div className="flex justify-center mb-8">
+           <button
             onClick={toggleAutoPlay}
             className={`px-4 py-2 rounded-full ${isAutoPlaying ? 'bg-purple-600' : 'bg-gray-500'} text-white transition-colors`}
           >
             {isAutoPlaying ? 'Auto-Play: On' : 'Auto-Play: Off'}
           </button>
-        </div>
-        <p className="text-xl text-center text-gray-600 mb-16">Trusted by the world's most innovative companies</p>
+        </div> */}
 
-        <div className="relative h-[600px] w-full max-w-4xl mx-auto">
+        <div className="relative h-[360px] w-full max-w-4xl mx-auto">
           {/* Center hub with pulsing effect */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center animate-pulse">
             <div className="w-56 h-56 rounded-full bg-gradient-to-br from-blue-200 to-purple-200 flex items-center justify-center">
@@ -117,7 +118,7 @@ const ClientsPlanetary = () => {
                     className="w-32 h-32 sm:w-40 sm:h-40 md:w-52 md:h-52 rounded-full border-4 border-white shadow-[0_0_30px_rgba(147,51,234,0.3)]"
                   />
                 </div>
-                <div className="absolute -bottom-20 left-1/2 transform -translate-x-1/2 bg-white shadow-md px-6 py-3 rounded-xl text-center">
+                <div className="absolute top-1/2 -right-48 transform -translate-y-1/2 bg-white shadow-md px-6 py-3 rounded-xl text-center">
                   <div className="text-lg font-bold text-gray-800">{clients[activeClientIndex].name}</div>
                   <div className="text-sm text-gray-600">{clients[activeClientIndex].position}</div>
                   <div className="text-xs text-purple-600 font-medium">{clients[activeClientIndex].company}</div>
@@ -195,7 +196,7 @@ const ClientsPlanetary = () => {
           </button>
 
           {/* Navigation dots */}
-          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex space-x-2 justify-center">
+          <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 flex space-x-2 justify-center">
             {clients.map((client, index) => (
               <button
                 key={`dot-${client.id}`}

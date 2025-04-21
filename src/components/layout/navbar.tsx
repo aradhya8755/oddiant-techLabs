@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/company", label: "Company" },
   { href: "/solutions", label: "Solutions" },
+  // { href: "/careers", label: "Careers" },
   { href: "/contact", label: "Contact Us" },
 ];
 
@@ -35,7 +36,7 @@ export function Navbar() {
     <header
       className={`fixed top-0 left-0 right-0 z-50  `}
     >
-      <div className="container mx-auto px-4 py-4">
+      <div className="container mx-auto px-4 py-4 bg-transparent">
         <div className="flex items-center justify-between">
           <Link href="/" className="relative">
             <div style={{ width: "180px", height: "40px", position: "relative" }}>
@@ -50,7 +51,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8 ">
+          <nav className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) => (
               <Link
                 key={link.href}

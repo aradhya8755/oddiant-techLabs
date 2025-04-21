@@ -1,9 +1,11 @@
-import Image from "next/image";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import Testimonials from "@/components/Testimonials";
-import ClientsPlanetary from "@/components/ClientsPlanetary";
+"use client";
+import Image from "next/image"
+import { Card, CardContent } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Testimonials from "@/components/Testimonials"
+import ClientsPlanetary from "@/components/ClientsPlanetary"
+import WhyChooseUs from "@/components/why-choose-us"
+import WhatMakesUsDifferent from "@/components/what-makes-us"
 
 export default function CompanyPage() {
   return (
@@ -19,19 +21,16 @@ export default function CompanyPage() {
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in">
-              Company
-            </h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in">Company</h1>
             <p className="text-xl text-gray-300 animate-fade-in">
-              Learn about our mission, vision, and the team behind Oddiant
-              Techlabs
+              Learn about our mission, vision, and the team behind Oddiant Techlabs
             </p>
           </div>
         </div>
       </section>
 
       {/* About Us Section */}
-      <section className="py-24 bg-gradient-to-r from-blue-500/20 to-purple-500/20">
+      <section className="bg-gray-100">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="relative h-[300px] md:h-[400px] rounded-xl overflow-hidden animate-fade-in shadow-custom-shadow hover:shadow-hover-shadow hover:scale-105 transition-transform duration-300">
@@ -48,22 +47,19 @@ export default function CompanyPage() {
               </div>
             </div>
             <div>
-              <h2 className="text-3xl font-bold mb-6 animate-fade-in">
-                About Us
-              </h2>
+              <h2 className="text-3xl text-black font-bold mb-6 animate-fade-in">About Us</h2>
               <div className="prose prose-invert max-w-none animate-fade-in">
-                <p className="text-gray-300 mb-4">
-                  Oddiant Techlabs LLP is a bootstrapped, asset light start-up
-                  consulting firm for IT, HR, Manpower & Recruitment, staffing
-                  services, headquartered at Noida, U.P., India, catering IT,
-                  NON-IT, FinTech, Sales, Internet, BPO/ITES, NBFC, SaaS, Health
-                  Tech, Hospitality, Healthcare & Pharma, & more clients across
-                  globe for finding the best solutions for their requirements
-                  and with the end-to-end services 24X7X365.
+                <p className="text-black mb-4">
+                  Oddiant Techlabs LLP is a fast-growing, bootstrapped start-up consultancy, operating with an
+                  asset-light model. Headquartered in Noida, Uttar Pradesh, with a branch office in Bareilly, U.P.,
+                  India, we offer a comprehensive range of services including IT consulting, HR and recruitment
+                  solutions, staffing services, personality development training, and manpower outsourcing.
                 </p>
-                <p className="text-gray-300">
-                  We believe in as you are more than a resume, and as a
-                  recruiter its our job to connect talent's with opportunities.
+                <p className="text-black">
+                  As a leading recruitment agency in Noida, we provide end-to-end consulting services to over 20+
+                  clients globally across various industries—such as Information Technology (IT), Non-IT, FinTech,
+                  Sales, Internet businesses, BPO/ITES, NBFCs, SaaS companies, HealthTech, Hospitality, Healthcare, and
+                  Pharmaceuticals.
                 </p>
               </div>
             </div>
@@ -97,15 +93,8 @@ export default function CompanyPage() {
                   Vision
                 </h3>
                 <p className="text-black-300">
-                  Our vision is to empower businesses by providing innovative
-                  solutions & manpower consulting and top-tier talent through
-                  staffing, and recruitment services. We aim to be the trusted
-                  partner for organizations seeking to drive growth, enhance
-                  performance, and stay ahead of technological advancements. By
-                  connecting the best minds with the brightest opportunities, we
-                  strive to foster a future where businesses can seamlessly
-                  navigate the digital landscape with confidence, agility, and
-                  success.
+                  Vision To become a global leader in delivering innovative, reliable, and scalable consulting solutions
+                  in IT, HR, and personality development—empowering organizations and individuals.
                 </p>
               </CardContent>
             </Card>
@@ -135,16 +124,9 @@ export default function CompanyPage() {
                   Mission
                 </h3>
                 <p className="text-black-300">
-                  Our mission is to deliver exceptional IT consulting services
-                  and high-quality staffing solutions that meet the unique needs
-                  of businesses across industries. We are committed to providing
-                  expert guidance, innovative technologies, and a tailored
-                  approach to help our clients achieve operational excellence.
-                  By sourcing, recruiting, and placing top-tier talent, we
-                  empower organizations to build dynamic teams that drive
-                  success. Our focus is on fostering long-term relationships,
-                  ensuring our clients and candidates thrive in an ever-evolving
-                  technological landscape.
+                  We are on a mission to empower businesses with best-fit talent and 24/7 strategic support through
+                  customized, scalable solutions. From global staffing to technical hiring and corporate training,
+                  Oddiant Techlabs is your trusted end-to-end partner.
                 </p>
               </CardContent>
             </Card>
@@ -152,19 +134,27 @@ export default function CompanyPage() {
         </div>
       </section>
 
+      {/* Why Choose Us Section */}
+      <WhyChooseUs />
+
+      {/* What Makes Us Different Section */}
+      <WhatMakesUsDifferent />
+
+      {/* testimonials section */}
+      <section className="">
+        <ClientsPlanetary></ClientsPlanetary>
+      </section>
+
       {/* Team Section */}
       <section className="py-16 bg-zinc-900 relative overflow-hidden">
         {/* Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/20 to-purple-900/20 z-0" />
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20" />
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4 animate-fade-in">
-              Our Team of Experts
-            </h2>
+            <h2 className="text-3xl font-bold mb-4 animate-fade-in">Our Team of Experts</h2>
             <p className="text-gray-400 max-w-2xl mx-auto animate-fade-in">
-              Meet the talented professionals driving innovation and excellence
-              at Oddiant Techlabs
+              Meet the talented professionals driving innovation and excellence at Oddiant Techlabs
             </p>
           </div>
 
@@ -176,7 +166,7 @@ export default function CompanyPage() {
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
                 <Avatar className="w-24 h-24 mb-4 shadow-custom-shadow hover:shadow-hover-shadow hover:scale-105 transition-transform duration-300">
-                  <AvatarImage src={member.image} />
+                  <AvatarImage src={member.image || "/placeholder.svg"} />
                   <AvatarFallback>{member.initials}</AvatarFallback>
                 </Avatar>
                 <h3 className="text-xl font-bold text-black">{member.name}</h3>
@@ -186,29 +176,23 @@ export default function CompanyPage() {
           </div>
         </div>
       </section>
+
       {/* testimonials section */}
       <section className="">
-            <ClientsPlanetary></ClientsPlanetary>
+        <Testimonials></Testimonials>
       </section>
-      {/* testimonials section */}
-      <section className="">
-            <Testimonials></Testimonials>
-      </section>
-      
+
       {/* Certifications Section */}
       <section className="py-24 bg-gradient-to-r from-blue-500/20 to-purple-500/20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4 animate-fade-in">
-              Recognitions & Certifications
-            </h2>
+            <h2 className="text-3xl font-bold mb-4 animate-fade-in">Due Diligence & Compliance</h2>
             <p className="text-gray-400 max-w-2xl mx-auto animate-fade-in">
-              Our commitment to excellence is recognized through various
-              certifications
+              Our commitment to excellence is recognized through various certifications
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {certifications.map((cert, idx) => (
               <div
                 key={cert.name}
@@ -216,12 +200,7 @@ export default function CompanyPage() {
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
                 <div className="relative h-24 w-48 mb-4">
-                  <Image
-                    src={cert.logo}
-                    alt={cert.name}
-                    fill
-                    className="object-contain"
-                  />
+                  <Image src={cert.logo || "/placeholder.svg"} alt={cert.name} fill className="object-contain" />
                 </div>
                 <h3 className="text-lg font-medium text-black">{cert.name}</h3>
                 <p className="text-sm text-black mt-2">{cert.description}</p>
@@ -231,56 +210,65 @@ export default function CompanyPage() {
         </div>
       </section>
     </div>
-  );
+  )
 }
 
 const teamMembers = [
   {
     name: "Aradhya Saxena",
     role: "CEO & Founder",
-    image: "", // We don't have actual images
+    image: "/images/logos/AS.jpg",
     initials: "AS",
   },
   {
     name: "Saloni",
     role: "Business Partner",
-    image: "",
+    image: "/images/logos/SA.jpg",
     initials: "SA",
   },
   {
     name: "Himanshu Walia",
     role: "Sr. Resource Manager",
-    image: "",
+    image: "/images/logos/HW.png",
     initials: "HW",
   },
   {
     name: "Nimrat Kaur Bagga",
     role: "Business Development Manager",
-    image: "",
+    image: "/images/logos/NK.png",
     initials: "NK",
   },
-];
+]
 
 const certifications = [
   {
     name: "GST Registered",
     logo: "/images/logos/gst-logo.png",
-    description: "Registered under Goods and Services Tax",
+    description: "GST Number : 09AAJFO2188G1ZY",
   },
-  {
-    name: "Startup India",
-    logo: "/images/logos/startup-india.png",
-    description:
-      "Recognized by Department for Promotion of Industry and Internal Trade",
-  },
+  // {
+  //   name: "Startup India",
+  //   logo: "/images/logos/startup-india.png",
+  //   description: "Recognized by Department for Promotion of Industry and Internal Trade",
+  // },
   {
     name: "MSME Certified",
     logo: "/images/logos/msme-logo.png",
-    description: "Certified Micro, Small & Medium Enterprise",
+    description: "UDYAM REGISTRATION NUMBER: UDYAM-UP-15-0070931",
   },
+  // {
+  //   name: "ISO Certified",
+  //   logo: "/images/logos/iso-logo.png",
+  //   description: "ISO 9001:2015 Certified for Quality Management",
+  // },
   {
-    name: "ISO Certified",
-    logo: "/images/logos/iso-logo.png",
-    description: "ISO 9001:2015 Certified for Quality Management",
+    name: "INC",
+    logo: "/images/logos/inc-logo.png",
+    description: "LLP Identification Number: ACJ-3756",
   },
-];
+  // {
+  //   name: "START IN UP",
+  //   logo: "/images/logos/iso-logo.png",
+  //   description: "ISO 9001:2015 Certified for Quality Management",
+  // },
+]

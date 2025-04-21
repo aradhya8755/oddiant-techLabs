@@ -1,7 +1,9 @@
-import Image from "next/image";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Image from "next/image"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import App from "@/components/App"
+import FAQSection from "@/components/FAQSection"
 
 export default function Home() {
   return (
@@ -20,36 +22,46 @@ export default function Home() {
         <div className="container mx-auto px-4 z-10 text-center">
           <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
             <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300">
-              Empowering Business Growth Through Tech & Talent
+              Empowering Through Personality, Talent & Tech
             </h1>
             <p className="text-xl text-gray-300">
-              Oddiant Techlabs delivers innovative IT consulting and premier staffing solutions tailored to your business needs.
+              Innovative IT consulting, expert staffing solutions, and tailored personality development
+              programs—delivered to fit your unique business needs.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
-              <Button asChild className="bg-white text-black hover:text-white hover:bg-black rounded-full px-8 py-6 text-lg">
+              <Button
+                asChild
+                className="bg-white text-black hover:text-white hover:bg-green-500 rounded-full px-8 py-6 text-lg"
+              >
                 <Link href="/solutions">Explore Solutions</Link>
               </Button>
-              <Button asChild  className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-black">
+              <Button
+                asChild
+                className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-500"
+              >
                 <Link href="/contact">Contact Us</Link>
               </Button>
             </div>
           </div>
         </div>
       </section>
-
       {/* Sbg-transparentervices Section */}
-      <section className="py-24 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-t-white border-t-1">
+      <section className="py-24 bg-gray-100">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16 animate-fade-in">
-            <h2 className="text-4xl font-bold mb-4">Our Services</h2>
-            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+            <h2 className="text-4xl text-black font-bold mb-4">Our Services</h2>
+            <p className="text-xl text-black max-w-3xl mx-auto">
               We provide end-to-end solutions tailored to your business requirements
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {services.map((service, index) => (
-              <Card key={index} className="bg-white border-zinc-700 shadow-custom-shadow hover:shadow-hover-shadow hover:scale-105 transition-transform duration-300" style={{ animationDelay: `${index * 0.1}s` }}>
+              <Card
+                key={index}
+                className="bg-white border-zinc-700 shadow-custom-shadow hover:shadow-hover-shadow hover:scale-105 transition-transform duration-300"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400">
@@ -66,85 +78,41 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* About Section */}
-      <section className="py-24 bg-gradient-to-r from-blue-500/20 to-purple-500/20">
+      {/* App Component with About Section */}
+      <section className="py-24 bg-gradient-to-br from-[#0a1128] to-[#1a2151]">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="animate-fade-in">
-              <h2 className="text-4xl font-bold mb-6">About Oddiant Techlabs</h2>
-              <p className="text-xl text-gray-300 mb-6">
-                Oddiant Techlabs LLP is a bootstrapped, asset light start-up consulting firm for IT, HR, Manpower & Recruitment, staffing services, headquartered at Noida, U.P., India.
+              <h2 className="text-4xl font-bold mb-6">Roadmap Oddiant Techlabs</h2>
+              <p className="text-lg text-gray-300 mb-6">
+                With over 7 years of industry experience, we've built a strong reputation for delivering results that
+                matter. Our commitment to excellence has earned us the trust of 20+ global clients who rely on us for
+                dependable, top-tier service.
+                <br />
+                <br /> 📈 1234 Placements & Counting We take pride in connecting talent with opportunity—making over
+                1,200 successful placements and transforming careers around the world.
+                <br /> <br />🌍 2 Strategic Delivery Centers Our dual-location model enables us to offer seamless
+                support and agile solutions to clients across the globe.
               </p>
-              <p className="text-gray-400 mb-8">
-                We believe in as you are more than a resume, and as a recruiter its our job to connect talent's with opportunities.
-              </p>
-              <Button asChild className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-black">
+              <p className="text-gray-400 mb-8"></p>
+              <Button
+                asChild
+                className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-500"
+              >
                 <Link href="/company">Learn More</Link>
               </Button>
             </div>
-            <div className="relative h-[400px] lg:h-[500px] rounded-xl overflow-hidden animate-fade-in shadow-custom-shadow hover:shadow-hover-shadow hover:scale-105 transition-transform duration-300">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 z-10 mix-blend-overlay" />
-              <div className="grid grid-cols-2 gap-4 p-4 h-full">
-                <div className="flex flex-col gap-4">
-                  <div className="bg-black rounded-lg p-6 h-1/2 flex items-center justify-center">
-                    <div className="text-center">
-                      <h3 className="text-3xl font-bold text-blue-400">10+</h3>
-                      <p className="text-gray-400">Years Experience</p>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-lg p-6 h-1/2 flex items-center justify-center">
-                    <div className="text-center">
-                      <h3 className="text-3xl font-bold text-purple-400">500+</h3>
-                      <p className="text-gray-400">Successful Placements</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-4">
-                  <div className="bg-white rounded-lg p-6 h-1/2 flex items-center justify-center">
-                    <div className="text-center">
-                      <h3 className="text-3xl font-bold text-green-400">50+</h3>
-                      <p className="text-gray-400">Global Clients</p>
-                    </div>
-                  </div>
-                  <div className="bg-black rounded-lg p-6 h-1/2 flex items-center justify-center">
-                    <div className="text-center">
-                      <h3 className="text-3xl font-bold text-yellow-400">24/7</h3>
-                      <p className="text-gray-400">Service Support</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div>
+              <App showAboutSection={false} />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Certification Section */}
-      <section className="py-16 bg-gradient-to-r from-blue-900/20 to-purple-900/20">
+      {/* FAQ Section */}
+      <section className="py-16 bg-gray-100">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12 animate-fade-in">
-            <h2 className="text-3xl font-bold mb-4">Recognitions & Certifications</h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Recognized for excellence and certified to deliver quality services
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-12 items-center">
-            
-            {certifications.map((cert, index) => (
-              <div key={index} className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
-                <div className="relative h-20 w-40">
-                  <Image
-                    src={cert.logo}
-                    alt={cert.name}
-                    fill
-                    className="object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
-                  />
-                </div>
-                <p className="text-center text-sm text-gray-400 mt-2">{cert.name}</p>
-              </div>
-            ))}
-          </div>
+          <FAQSection />
         </div>
       </section>
 
@@ -156,20 +124,23 @@ export default function Home() {
             <p className="text-xl text-gray-300 mb-10">
               Contact us today to discuss how Oddiant Techlabs can help you achieve your business goals.
             </p>
-            <Button asChild className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-500">
+            <Button
+              asChild
+              className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-500"
+            >
               <Link href="/contact">Get Started</Link>
             </Button>
           </div>
         </div>
       </section>
     </div>
-  );
+  )
 }
 
 const services = [
   {
     title: "IT Consulting",
-    description: "Strategic IT consulting services to help businesses leverage technology for growth and efficiency.",
+    description: "Web Based Solutions & Web App Development",
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -188,8 +159,8 @@ const services = [
     ),
   },
   {
-    title: "Recruitment",
-    description: "Find the right talent for your organization with our specialized recruitment services.",
+    title: "HR Consulting",
+    description: "Background Verification & Onboarding and Payroll",
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -209,8 +180,8 @@ const services = [
     ),
   },
   {
-    title: "Staffing",
-    description: "Flexible staffing solutions to meet your business demands and workforce requirements.",
+    title: "Recruitment & Manpower Consulting",
+    description: "Permanent Staffing & Contingent Staffing",
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -230,8 +201,8 @@ const services = [
     ),
   },
   {
-    title: "HR Services",
-    description: "Comprehensive HR services to streamline your human resources management and compliance.",
+    title: "Personality Development Program (PDP)",
+    description: "Resume Writing, Soft Skill Training & Interview Preparation",
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -252,7 +223,7 @@ const services = [
       </svg>
     ),
   },
-];
+]
 
 const certifications = [
   {
@@ -269,6 +240,6 @@ const certifications = [
   },
   {
     name: "ISO Certified",
-    logo: "/images/logos/iso-logo.png",
+    logo: "/images/logos/inc-logo.png",
   },
-];
+]
