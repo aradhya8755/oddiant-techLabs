@@ -51,12 +51,5 @@
         }
       ]
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/contact",
-      "methods": ["POST", "OPTIONS"],
-      "dest": "/api/contact"
-    }
   ]
 }
