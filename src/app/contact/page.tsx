@@ -31,20 +31,20 @@ export default function ContactPage() {
     setIsSubmitting(true)
 
     try {
-      // Improved fetch with timeout
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+      console.log("Submitting form data:", formData)
 
+      // Use fetch with explicit mode and credentials
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
-        signal: controller.signal,
+        mode: "same-origin", // Important for CORS
+        credentials: "same-origin", // Important for cookies
       })
 
-      clearTimeout(timeoutId)
+      console.log("Response status:", response.status)
 
       // Check if response is ok first
       if (!response.ok) {
@@ -53,17 +53,34 @@ export default function ContactPage() {
         throw new Error(`Server error: ${response.status}. Please try again later.`)
       }
 
-      // Handle response parsing with better error handling
+      // Try to parse the response as JSON
       let data
-      try {
-        data = await response.json()
-      } catch (error) {
-        console.error("Error parsing response:", error, "Response status:", response.status)
-        console.error("Response text:", await response.text().catch(() => "Could not read response text"))
-        throw new Error("Received invalid response from server. Please try again.")
+      const contentType = response.headers.get("content-type")
+
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = await response.json()
+          console.log("Response data:", data)
+        } catch (error) {
+          console.error("Error parsing JSON response:", error)
+          throw new Error("Received invalid response from server. Please try again.")
+        }
+      } else {
+        const textResponse = await response.text()
+        console.log("Non-JSON response:", textResponse)
+        // Try to parse it anyway in case the Content-Type header is wrong
+        try {
+          data = JSON.parse(textResponse)
+          console.log("Parsed text response as JSON:", data)
+        } catch (error) {
+          console.error("Could not parse text response as JSON:", error)
+          throw new Error("Server returned an invalid response format. Please try again.")
+        }
       }
 
-      toast.success("Message sent successfully! We'll get back to you soon.")
+      toast.success(data?.message || "Message sent successfully! We'll get back to you soon.")
+
+      // Reset form
       setFormData({
         name: "",
         email: "",
