@@ -1,7 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  distDir: 'out',
+  distDir: 'out', // optional: only keep if you're intentionally using a custom build dir
+
+  reactStrictMode: true, // optional but recommended
+
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
   images: {
     unoptimized: true,
     domains: [
@@ -33,13 +43,21 @@ const nextConfig = {
       },
     ],
   },
-  typescript: {
-    ignoreBuildErrors: true,
+
+  serverExternalPackages: ["mongoose", "exceljs", "nodemailer"],
+  async headers() {
+    return [
+      {
+        source: "/api/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization" },
+          { key: "Access-Control-Max-Age", value: "86400" },
+        ],
+      },
+    ];
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  reactStrictMode: true,
 };
 
 module.exports = nextConfig;

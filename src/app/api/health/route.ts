@@ -1,3 +1,4 @@
+export const dynamic = "auto"
 export const runtime = "nodejs"
 
 export async function GET() {
