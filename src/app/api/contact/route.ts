@@ -78,38 +78,38 @@ export async function POST(request: NextRequest) {
         // Continue processing - we'll still return success since the DB entry was created
       }
 
-      // Return success response
-      return NextResponse.json(
-        { success: true, message: "Contact form submitted successfully" },
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-          },
+      // Return success response with explicit headers
+      return new NextResponse(JSON.stringify({ success: true, message: "Contact form submitted successfully" }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
         },
-      )
+      })
     } catch (error) {
       console.error("Error processing contact form:", error)
-      return NextResponse.json(
-        { success: false, message: "Failed to process your request" },
-        {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      )
-    }
-  } catch (error) {
-    console.error("Unexpected error in contact form handler:", error)
-    return NextResponse.json(
-      { success: false, message: "An unexpected error occurred" },
-      {
+      return new NextResponse(JSON.stringify({ success: false, message: "Failed to process your request" }), {
         status: 500,
         headers: {
           "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
         },
+      })
+    }
+  } catch (error) {
+    console.error("Unexpected error in contact form handler:", error)
+    return new NextResponse(JSON.stringify({ success: false, message: "An unexpected error occurred" }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
-    )
+    })
   }
 }

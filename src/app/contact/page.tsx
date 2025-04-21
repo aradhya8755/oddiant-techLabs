@@ -33,15 +33,20 @@ export default function ContactPage() {
     try {
       console.log("Submitting form data:", formData)
 
+      // Get the current origin for API URL construction
+      const origin = window.location.origin
+      const apiUrl = `${origin}/api/contact`
+
+      console.log("Submitting to API URL:", apiUrl)
+
       // Use fetch with explicit mode and credentials
-      const response = await fetch("/api/contact", {
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
-        mode: "same-origin", // Important for CORS
-        credentials: "same-origin", // Important for cookies
+        // Don't set mode or credentials to ensure it works in all environments
       })
 
       console.log("Response status:", response.status)
