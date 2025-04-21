@@ -22,7 +22,7 @@ export async function OPTIONS() {
 
 // Handle POST requests
 export async function POST(request: NextRequest) {
-  console.log("Contact API route hit with POST method")
+  console.log("Fallback Contact API route hit with POST method")
 
   try {
     // Parse the request body with error handling

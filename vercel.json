@@ -52,5 +52,11 @@
       ]
     }
   ],
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/$1" }]
+  "routes": [
+    {
+      "src": "/api/contact",
+      "methods": ["POST", "OPTIONS"],
+      "dest": "/api/contact"
+    }
+  ]
 }

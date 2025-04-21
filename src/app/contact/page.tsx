@@ -39,47 +39,81 @@ export default function ContactPage() {
 
       console.log("Submitting to API URL:", apiUrl)
 
-      // Use fetch with explicit mode and credentials
+      // First, check if the API endpoint is accessible with a preflight OPTIONS request
+      try {
+        const preflightResponse = await fetch(apiUrl, {
+          method: "OPTIONS",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+
+        console.log("Preflight response status:", preflightResponse.status)
+
+        if (!preflightResponse.ok) {
+          console.warn("Preflight request failed, but continuing with POST request")
+        }
+      } catch (preflightError) {
+        console.warn("Preflight request error, but continuing with POST request:", preflightError)
+      }
+
+      // Use fetch with minimal options to avoid CORS issues
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
-        // Don't set mode or credentials to ensure it works in all environments
       })
 
       console.log("Response status:", response.status)
 
       // Check if response is ok first
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`Server error (${response.status}):`, errorText)
-        throw new Error(`Server error: ${response.status}. Please try again later.`)
+        let errorMessage = `Server error: ${response.status}. Please try again later.`
+
+        try {
+          const errorData = await response.json()
+          if (errorData && errorData.message) {
+            errorMessage = errorData.message
+          }
+        } catch (e) {
+          // If we can't parse JSON, try to get text
+          try {
+            const errorText = await response.text()
+            console.error("Error response text:", errorText)
+          } catch (textError) {
+            console.error("Could not read error response text:", textError)
+          }
+        }
+
+        throw new Error(errorMessage)
       }
 
       // Try to parse the response as JSON
       let data
-      const contentType = response.headers.get("content-type")
+      try {
+        data = await response.json()
+        console.log("Response data:", data)
+      } catch (jsonError) {
+        console.error("Error parsing JSON response:", jsonError)
 
-      if (contentType && contentType.includes("application/json")) {
+        // Try to get the response as text
         try {
-          data = await response.json()
-          console.log("Response data:", data)
-        } catch (error) {
-          console.error("Error parsing JSON response:", error)
-          throw new Error("Received invalid response from server. Please try again.")
-        }
-      } else {
-        const textResponse = await response.text()
-        console.log("Non-JSON response:", textResponse)
-        // Try to parse it anyway in case the Content-Type header is wrong
-        try {
-          data = JSON.parse(textResponse)
-          console.log("Parsed text response as JSON:", data)
-        } catch (error) {
-          console.error("Could not parse text response as JSON:", error)
-          throw new Error("Server returned an invalid response format. Please try again.")
+          const textResponse = await response.text()
+          console.log("Response as text:", textResponse)
+
+          // Try to parse it as JSON anyway
+          try {
+            data = JSON.parse(textResponse)
+            console.log("Parsed text response as JSON:", data)
+          } catch (parseError) {
+            console.error("Could not parse text as JSON:", parseError)
+            throw new Error("Received invalid response from server. Please try again.")
+          }
+        } catch (textError) {
+          console.error("Could not read response as text:", textError)
+          throw new Error("Failed to read server response. Please try again.")
         }
       }
 

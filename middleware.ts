@@ -8,23 +8,25 @@ export function middleware(request: NextRequest) {
 
   // Allow CORS for API routes
   if (path.startsWith("/api/")) {
-    // Clone the request headers
-    const requestHeaders = new Headers(request.headers)
+    // For OPTIONS requests, return a response immediately with CORS headers
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+          "Access-Control-Max-Age": "86400",
+        },
+      })
+    }
 
-    // Get response
-    const response = NextResponse.next({
-      request: {
-        // Apply new request headers
-        headers: requestHeaders,
-      },
-    })
-
-    // Set CORS headers
+    // For other requests, add CORS headers to the response
+    const response = NextResponse.next()
     response.headers.set("Access-Control-Allow-Origin", "*")
     response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
     response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-    // Return response
     return response
   }
 
