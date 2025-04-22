@@ -5,9 +5,9 @@ import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import type { FormData } from "../register-form"
+import { ChevronDown } from "lucide-react"
 
 // Cities data organized by state and sorted alphabetically
 const citiesData = [
@@ -653,6 +653,7 @@ interface PersonalDetailsFormProps {
 export default function PersonalDetailsForm({ formData, updateFormData }: PersonalDetailsFormProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredCities, setFilteredCities] = useState(allCities)
+  const [showSalutationDropdown, setShowSalutationDropdown] = useState(false)
 
   useEffect(() => {
     if (searchTerm) {
@@ -685,22 +686,69 @@ export default function PersonalDetailsForm({ formData, updateFormData }: Person
     setSearchTerm("")
   }
 
+  const handleSalutationSelect = (salutation: string) => {
+    updateFormData({ salutation })
+    setShowSalutationDropdown(false)
+    setSearchTerm("") // Clear any search term when selecting
+  }
+
+  // List of salutations
+  const salutations = ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof."]
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="salutation">Salutation</Label>
-        <Select value={formData.salutation} onValueChange={(value) => handleSelectChange("salutation", value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select salutation" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Mr.">Mr.</SelectItem>
-            <SelectItem value="Mrs.">Mrs.</SelectItem>
-            <SelectItem value="Ms.">Ms.</SelectItem>
-            <SelectItem value="Dr.">Dr.</SelectItem>
-            <SelectItem value="Prof.">Prof.</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowSalutationDropdown(!showSalutationDropdown)}
+            className="flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-haspopup="listbox"
+            aria-expanded={showSalutationDropdown}
+            id="salutation"
+          >
+            <span className="text-left">{formData.salutation || "Select salutation"}</span>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </button>
+          {showSalutationDropdown && (
+            <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+              <ul className="py-1" role="listbox" aria-labelledby="salutation">
+                {salutations.map((salutation) => (
+                  <li
+                    key={salutation}
+                    className={`relative cursor-default select-none py-1.5 pl-8 pr-2 text-sm ${
+                      formData.salutation === salutation
+                        ? "bg-accent text-accent-foreground"
+                        : "hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                    role="option"
+                    aria-selected={formData.salutation === salutation}
+                    onClick={() => handleSalutationSelect(salutation)}
+                  >
+                    {formData.salutation === salutation && (
+                      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-4 w-4"
+                        >
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      </span>
+                    )}
+                    {salutation}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
