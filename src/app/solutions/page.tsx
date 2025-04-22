@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SolutionsPage() {
   return (
@@ -18,7 +18,9 @@ export default function SolutionsPage() {
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in">Our Solutions</h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in">
+              Our Solutions
+            </h1>
             <p className="text-xl text-gray-300 animate-fade-in">
               Comprehensive services tailored to meet your business needs
             </p>
@@ -54,13 +56,26 @@ export default function SolutionsPage() {
                     <CardTitle className="text-xl">{service.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-black mb-6">{service.shortDescription}</p>
+                    <p className="text-black mb-6">
+                      {service.shortDescription}
+                    </p>
                     <Button
                       asChild
                       variant="link"
-                      className="p-0 text-md text-black bg-white rounded-md hover:bg-green-500 hover:text-white hover:no-underline"
+                      className="
+    inline-flex items-center justify-center
+    p-2 px-4
+    text-md font-normal
+    text-white bg-black
+    border border-black rounded-md
+    hover:bg-green-600 hover:text-white hover:no-underline
+    no-underline
+    transition-colors
+    w-[120px] h-[40px]
+    absolute bottom-4 left-1/2 transform -translate-x-1/2
+  "
                     >
-                      <a href={`#${service.id}`}>Learn More</a>
+                      <a href="#service-id">Learn More</a>
                     </Button>
                   </CardContent>
                 </Card>
@@ -75,16 +90,28 @@ export default function SolutionsPage() {
         <section
           key={service.id}
           id={service.id}
-          className={`py-20 ${index % 1 === 0 ? "py-24 bg-gradient-to-r from-blue-500/20 to-purple-500/20" : "bg-white"}`}
+          className={`py-20 ${
+            index % 1 === 0
+              ? "py-24 bg-gradient-to-r from-blue-500/20 to-purple-500/20"
+              : "bg-white"
+          }`}
         >
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <div className={`${index % 2 === 0 ? "order-1 lg:order-1" : "order-1 lg:order-2"}`}>
-                <h2 className="text-3xl font-bold mb-6 animate-fade-in">{service.title}</h2>
+              <div
+                className={`${
+                  index % 2 === 0 ? "order-1 lg:order-1" : "order-1 lg:order-2"
+                }`}
+              >
+                <h2 className="text-3xl font-bold mb-6 animate-fade-in">
+                  {service.title}
+                </h2>
                 <div className="prose prose-invert max-w-none animate-fade-in">
                   <p className="text-gray-300 mb-4">{service.description}</p>
 
-                  <h3 className="text-xl font-semibold mt-8 mb-4">What We Offer</h3>
+                  <h3 className="text-xl font-semibold mt-8 mb-4">
+                    What We Offer
+                  </h3>
 
                   <ul className="space-y-3">
                     {service.offerings.map((offering, idx) => (
@@ -130,7 +157,12 @@ export default function SolutionsPage() {
                   <div className="grid grid-cols-2 gap-4 w-full">
                     {service.stats.map((stat, idx) => {
                       // Define color classes based on index
-                      const colorClasses = ["text-blue-400", "text-green-400", "text-purple-400", "text-yellow-400"]
+                      const colorClasses = [
+                        "text-blue-400",
+                        "text-green-400",
+                        "text-purple-400",
+                        "text-yellow-400",
+                      ];
 
                       // Determine background color based on position
                       const bgColor =
@@ -139,21 +171,26 @@ export default function SolutionsPage() {
                             ? "bg-black"
                             : "bg-white"
                           : Math.floor(idx / 2) % 2 === 0
-                            ? "bg-white"
-                            : "bg-black"
+                          ? "bg-white"
+                          : "bg-black";
 
                       // Determine text color based on background
-                      const textColor = bgColor === "bg-black" ? "text-white" : "text-black"
+                      const textColor =
+                        bgColor === "bg-black" ? "text-white" : "text-black";
 
                       return (
                         <div
                           key={idx}
                           className={`${bgColor} rounded-lg p-6 text-center flex flex-col items-center justify-center transition-transform hover:scale-105 shadow-lg`}
                         >
-                          <p className={`text-4xl font-bold ${colorClasses[idx]} mb-2`}>{stat.value}</p>
+                          <p
+                            className={`text-4xl font-bold ${colorClasses[idx]} mb-2`}
+                          >
+                            {stat.value}
+                          </p>
                           <p className={`text-sm ${textColor}`}>{stat.label}</p>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 </div>
@@ -167,10 +204,12 @@ export default function SolutionsPage() {
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-6 animate-fade-in text-black">Ready to Transform Your Business?</h2>
+            <h2 className="text-3xl font-bold mb-6 animate-fade-in text-black">
+              Ready to Transform Your Business?
+            </h2>
             <p className="text-black mb-8 animate-fade-in">
-              Contact us today to discuss how Oddiant Techlabs can help you achieve your business goals with our
-              comprehensive solutions.
+              Contact us today to discuss how Oddiant Techlabs can help you
+              achieve your business goals with our comprehensive solutions.
             </p>
             <Button
               asChild
@@ -182,7 +221,7 @@ export default function SolutionsPage() {
         </div>
       </section>
     </div>
-  )
+  );
 }
 
 const services = [
@@ -247,7 +286,7 @@ const services = [
       </svg>
     ),
     shortDescription:
-      "HR Consulting offers expert advice on managing people, improving workplace culture, and aligning HR strategies with business goals. It helps organizations streamline recruitment, compliance, and employee development.",
+      "HR Consulting guides businesses in managing people, improving workplace culture, and aligning HR strategies with growth and compliance needs.",
     description:
       "We help businesses strengthen their people strategies by shaping effective HR frameworks and improving organizational culture. Our solutions ensure smooth HR operations, talent growth, and regulatory compliance.",
     offerings: [
@@ -286,7 +325,7 @@ const services = [
       </svg>
     ),
     shortDescription:
-      "Recruitment & Manpower Consulting connects businesses with the right talent to meet their workforce needs. It streamlines hiring processes and ensures skilled candidates align with organizational goals.",
+      "Recruitment & Manpower Consulting links businesses with the right talent to meet staffing needs, ensuring candidates match organizational goals.",
     description:
       "We assist businesses in building strong teams by sourcing skilled professionals who align with your company's goals and culture. Our recruitment solutions ensure faster hiring and long-term workforce stability.",
     offerings: [
@@ -325,7 +364,7 @@ const services = [
       </svg>
     ),
     shortDescription:
-      "Personality Development Program (PDP) enhances communication, confidence, and interpersonal skills. It helps individuals build a strong personal and professional presence.",
+      "Personality Development Program boosts confidence, communication, and interpersonal skills for building strong personal and professional impact.",
     description:
       "Our PDP sessions are designed to boost self-confidence, enhance communication skills, and foster leadership qualities. We focus on shaping well-rounded individuals ready to excel in both personal and professional environments.",
     offerings: [
@@ -343,4 +382,4 @@ const services = [
       { value: "98%", label: "Client Retention" },
     ],
   },
-]
+];

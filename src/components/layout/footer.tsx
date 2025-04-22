@@ -323,7 +323,7 @@ export function Footer() {
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <Link
-              href="/privacy-policy"
+              href="/images/logos/PRIVACY-TERMS[1].pdf" target="_blank"
               className="text-white hover:border-white hover:border-b-2 transition-colors"
             >
               Privacy Policy
