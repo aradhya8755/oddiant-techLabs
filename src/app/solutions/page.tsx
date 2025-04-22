@@ -72,7 +72,7 @@ export default function SolutionsPage() {
     no-underline
     transition-colors
     w-[120px] h-[40px]
-    absolute bottom-4 left-1/2 transform -translate-x-1/2
+    absolute bottom-2 left-1/2 transform -translate-x-1/2
   "
                     >
                       <a href="#service-id">Learn More</a>
@@ -337,10 +337,10 @@ const services = [
       "Interview Coordination & Candidate Evaluation",
     ],
     stats: [
-      { value: "500+", label: "Successful Placements" },
-      { value: "85%", label: "First-time Fit" },
-      { value: "12", label: "Avg. Days to Fill" },
-      { value: "80+", label: "Active Clients" },
+      { value: "346+", label: "Successfull Offers & Counting" },
+      { value: "85%", label: "Cultural fit" },
+      { value: "12", label: "Average days to fill" },
+      { value: "15+", label: "Active Clients" },
     ],
   },
   {
@@ -376,10 +376,10 @@ const services = [
       "Time Management & Goal Setting Workshops",
     ],
     stats: [
-      { value: "200+", label: "Active Contractors" },
-      { value: "24hr", label: "Avg. Response Time" },
+      { value: "1200+", label: "hours session completed" },
+      { value: "150+", label: "Careers build" },
       { value: "15+", label: "Industries Served" },
-      { value: "98%", label: "Client Retention" },
+      { value: "5-7 Days", label: "Average session" },
     ],
   },
 ];
