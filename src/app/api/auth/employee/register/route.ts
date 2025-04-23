@@ -36,9 +36,21 @@ export async function POST(request: NextRequest) {
 
       const companyLinkedin = formData.get("companyLinkedin") as string
 
+      // Extract new KYC fields
+      const kycNumber = formData.get("kycNumber") as string
+      const documentType = formData.get("documentType") as string
+
       // Validate required fields
       if (!email || !password || !firstName || !lastName || !phone || !designation || !companyName) {
         return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 })
+      }
+
+      // Validate KYC fields
+      if (!kycNumber || !documentType) {
+        return NextResponse.json(
+          { success: false, message: "KYC number and document type are required" },
+          { status: 400 },
+        )
       }
 
       // Validate email domain for company email
@@ -100,7 +112,13 @@ export async function POST(request: NextRequest) {
         // Handle KYC document uploads
         const kycFile = formData.get("kycDocument") as File | null
         const kycResult = await processFileUpload("KYC document", kycFile, "employee-documents/kyc", "auto")
-        if (kycResult) kycDocuments.kyc = kycResult
+        if (kycResult) {
+          kycDocuments.kyc = {
+            ...kycResult,
+            documentType,
+            kycNumber,
+          }
+        }
       } catch (uploadError: any) {
         console.error("Error during KYC document upload:", uploadError)
         return NextResponse.json(
@@ -141,6 +159,10 @@ export async function POST(request: NextRequest) {
         socialMediaLinks,
         companyLinkedin,
         documents: kycDocuments,
+        kycDetails: {
+          documentType,
+          kycNumber,
+        },
         verified: false,
         otp,
         otpExpiry,
@@ -198,7 +220,9 @@ export async function POST(request: NextRequest) {
         !body.lastName ||
         !body.phone ||
         !body.designation ||
-        !body.companyName
+        !body.companyName ||
+        !body.kycNumber ||
+        !body.documentType
       ) {
         return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 })
       }
@@ -228,10 +252,14 @@ export async function POST(request: NextRequest) {
       // Hash password
       const hashedPassword = await hashPassword(body.password)
 
-      // Create employee document
+      // Create employee document with KYC details
       const newEmployee = {
         ...body,
         password: hashedPassword,
+        kycDetails: {
+          documentType: body.documentType,
+          kycNumber: body.kycNumber,
+        },
         verified: false,
         otp,
         otpExpiry,

@@ -39,6 +39,8 @@ export type EmployeeFormData = {
 
   // Documents
   kycDocument: File | null
+  kycNumber: string
+  documentType: string
 }
 
 const initialFormData: EmployeeFormData = {
@@ -67,6 +69,8 @@ const initialFormData: EmployeeFormData = {
 
   // Documents
   kycDocument: null,
+  kycNumber: "",
+  documentType: "",
 }
 
 const steps = [
@@ -165,8 +169,8 @@ export default function EmployeeRegisterPage() {
               <Briefcase className="h-8 w-8 text-purple-600" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Employee Registration</CardTitle>
-          <CardDescription className="text-center">Create your employee account at Oddiant Techlabs</CardDescription>
+          <CardTitle className="text-2xl font-bold text-center">Organizations/Institution Register</CardTitle>
+          <CardDescription className="text-center">Create your account at Oddiant Techlabs</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Progress indicator */}

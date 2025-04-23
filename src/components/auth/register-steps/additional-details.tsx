@@ -50,18 +50,20 @@ export default function AdditionalDetailsForm({ formData, updateFormData }: Addi
           Skills / Technologies (Max 15) <span className="text-red-500">*</span>
         </Label>
         <div className="flex flex-wrap gap-2 mb-2">
-          {formData.skills.map((skill, index) => (
-            <div key={index} className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-md">
-              <span>{skill}</span>
-              <button
-                type="button"
-                onClick={() => removeSkill(index)}
-                className="ml-1 text-blue-600 hover:text-blue-800"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
+          {formData.skills
+            .filter((skill) => skill.trim() !== "")
+            .map((skill, index) => (
+              <div key={index} className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-md">
+                <span>{skill}</span>
+                <button
+                  type="button"
+                  onClick={() => removeSkill(index)}
+                  className="ml-1 text-blue-600 hover:text-blue-800"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
         </div>
         <div className="flex space-x-2">
           <Input

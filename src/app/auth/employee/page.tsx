@@ -16,11 +16,11 @@ export default function EmployeeAuthPage() {
               <Briefcase className="h-8 w-8 text-purple-600" />
             </div>
             <CardTitle>Register</CardTitle>
-            <CardDescription>Create a new employee account</CardDescription>
+            <CardDescription>Create a new Organizations/Institution account</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-gray-500 mb-6">
-              Sign up with your company email to access the employee dashboard and internal tools.
+              Sign up with your company email to access the dashboard and internal tools.
             </p>
           </CardContent>
           <CardFooter className="flex justify-center">
@@ -38,16 +38,16 @@ export default function EmployeeAuthPage() {
               <LogIn className="h-8 w-8 text-green-600" />
             </div>
             <CardTitle>Sign In</CardTitle>
-            <CardDescription>Access your employee account</CardDescription>
+            <CardDescription>Access your Organizations/Institution account</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-gray-500 mb-6">
-              Already have an employee account? Sign in to access your dashboard and tools.
+              Already have an Organizations/Institution account? Sign in to access your dashboard and tools.
             </p>
           </CardContent>
           <CardFooter className="flex justify-center">
             <Link href="/auth/employee/login">
-              <Button size="lg" variant="outline" className="w-full">
+              <Button size="lg" variant="outline" className="w-full hover:bg-green-500 hover:text-black">
                 Sign In
               </Button>
             </Link>

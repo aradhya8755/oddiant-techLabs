@@ -16,6 +16,8 @@ interface DocumentsFormProps {
 export default function EmployeeDocuments({ formData, updateFormData }: DocumentsFormProps) {
   const [errors, setErrors] = useState({
     kycDocument: "",
+    kycNumber: "",
+    documentType: "",
   })
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,6 +44,31 @@ export default function EmployeeDocuments({ formData, updateFormData }: Document
     }
   }
 
+  const handleKycNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+
+    if (!value.trim()) {
+      setErrors((prev) => ({ ...prev, kycNumber: "KYC number is required" }))
+    } else {
+      setErrors((prev) => ({ ...prev, kycNumber: "" }))
+    }
+
+    updateFormData({ kycNumber: value })
+  }
+
+  const handleDocumentTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value
+
+    if (!value) {
+      setErrors((prev) => ({ ...prev, documentType: "Document type is required" }))
+    } else {
+      setErrors((prev) => ({ ...prev, documentType: "" }))
+    }
+
+    console.log("Selected document type:", value)
+    updateFormData({ documentType: value })
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -51,6 +78,49 @@ export default function EmployeeDocuments({ formData, updateFormData }: Document
         </p>
 
         <div className="space-y-4">
+          {/* Document Type Selection - Using standard HTML select */}
+          <div className="space-y-2">
+            <Label htmlFor="documentType">
+              Document Type <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="documentType"
+              value={formData.documentType || ""}
+              onChange={handleDocumentTypeChange}
+              className={`w-full px-3 py-2 border rounded-md ${
+                errors.documentType ? "border-red-300" : "border-gray-300"
+              } focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+            >
+              <option value="" disabled>
+                Select document type
+              </option>
+              <option value="aadhar">Aadhar Card</option>
+              <option value="pan">PAN Card</option>
+              <option value="passport">Passport</option>
+              <option value="driving_license">Driving License</option>
+              <option value="voter_id">Voter ID</option>
+              <option value="other">Other</option>
+            </select>
+            {errors.documentType && <p className="text-sm text-red-500">{errors.documentType}</p>}
+          </div>
+
+          {/* KYC Number Input */}
+          <div className="space-y-2">
+            <Label htmlFor="kycNumber">
+              KYC Number <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="kycNumber"
+              type="text"
+              value={formData.kycNumber || ""}
+              onChange={handleKycNumberChange}
+              placeholder="Enter your document number"
+              className={errors.kycNumber ? "border-red-300" : ""}
+            />
+            {errors.kycNumber && <p className="text-sm text-red-500">{errors.kycNumber}</p>}
+          </div>
+
+          {/* KYC Document Upload */}
           <div className="space-y-2">
             <Label htmlFor="kycDocument">
               KYC Document <span className="text-red-500">*</span>
@@ -59,7 +129,7 @@ export default function EmployeeDocuments({ formData, updateFormData }: Document
               <Input
                 id="kycDocument"
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
+                accept=".pdf,.jpg,.jpeg,.png,.avif,.svg"
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -78,7 +148,7 @@ export default function EmployeeDocuments({ formData, updateFormData }: Document
                   <div className="flex flex-col items-center space-y-2">
                     <Upload className="w-8 h-8 text-gray-400" />
                     <span className="font-medium text-gray-600">Click to upload KYC document</span>
-                    <span className="text-xs text-gray-500">(PDF, JPEG, PNG up to 5MB)</span>
+                    <span className="text-xs text-gray-500">(PDF, JPEG, PNG, JPG up to 5MB)</span>
                   </div>
                 )}
               </label>
@@ -92,7 +162,7 @@ export default function EmployeeDocuments({ formData, updateFormData }: Document
         <h4 className="text-sm font-medium text-yellow-800 mb-2">Important Note</h4>
         <p className="text-sm text-yellow-700">
           By submitting this form, you confirm that all information provided is accurate and that you are authorized to
-          register as an employee of Oddiant Techlabs. Your account will be verified by our HR department before
+          register as an employee of Oddiant Techlabs. Your account will be verified by our Legal department before
           activation.
         </p>
       </div>
