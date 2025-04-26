@@ -4,10 +4,10 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast, Toaster } from "sonner"
+import { Check, Briefcase } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Briefcase } from "lucide-react"
 import EmployeeAccountSetup from "@/components/auth/employee/account-setup"
 import EmployeePersonalDetails from "@/components/auth/employee/personal-details"
 import EmployeeCompanyDetails from "@/components/auth/employee/company-details"
@@ -162,75 +162,109 @@ export default function EmployeeRegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 py-16">
       <Toaster position="top-center" />
-      <Card className="w-full max-w-4xl">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <div className="bg-purple-100 p-3 rounded-full">
-              <Briefcase className="h-8 w-8 text-purple-600" />
+      <Card className="w-full max-w-5xl overflow-hidden flex flex-col md:flex-row">
+        {/* Purple gradient card on the left */}
+        <div className="w-full md:w-2/5 bg-gradient-to-br from-purple-700 to-purple-900 text-white p-8 flex flex-col justify-center">
+          <div className="space-y-6">
+            <h2 className="text-3xl font-bold">Join Our Community</h2>
+            <p className="text-purple-100">Create an account to access exclusive resources and opportunities.</p>
+
+            <div className="space-y-4 mt-8">
+              <div className="flex items-start space-x-3">
+                <Check className="h-5 w-5 text-purple-300 mt-0.5" />
+                <p>Personalized organization dashboard</p>
+              </div>
+              <div className="flex items-start space-x-3">
+                <Check className="h-5 w-5 text-purple-300 mt-0.5" />
+                <p>Track your recruitment campaigns</p>
+              </div>
+              <div className="flex items-start space-x-3">
+                <Check className="h-5 w-5 text-purple-300 mt-0.5" />
+                <p>Access exclusive talent pool</p>
+              </div>
+              <div className="flex items-start space-x-3">
+                <Check className="h-5 w-5 text-purple-300 mt-0.5" />
+                <p>Post unlimited job opportunities</p>
+              </div>
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Organizations/Institution Register</CardTitle>
-          <CardDescription className="text-center">Create your account at Oddiant Techlabs</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Progress indicator */}
-          <div className="space-y-2.5">
-            <div className="flex justify-between">
-              {steps.map((step, index) => (
-                <div
-                  key={step.id}
-                  className={`text-sm font-medium ${index <= currentStep ? "text-purple-600" : "text-gray-400"}`}
+        </div>
+
+        {/* Registration form on the right */}
+        <div className="w-full md:w-3/5 p-6">
+          <CardHeader className="space-y-1 px-0 pt-0">
+            <div className="flex justify-center mb-4">
+              <div className="bg-purple-100 p-3 rounded-full">
+                <Briefcase className="h-8 w-8 text-purple-600" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold text-center">Organizations/Institution Register</CardTitle>
+            <CardDescription className="text-center">Create your account to unlock opportunities</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6 px-0">
+            {/* Progress indicator with clickable steps */}
+            <div className="space-y-2.5">
+              <div className="flex justify-between">
+                {steps.map((step, index) => (
+                  <button
+                    key={step.id}
+                    onClick={() => setCurrentStep(index)}
+                    className={`text-sm font-medium cursor-pointer ${
+                      index <= currentStep ? "text-purple-600" : "text-gray-400"
+                    } hover:text-purple-800 transition-colors`}
+                    type="button"
+                  >
+                    {step.label}
+                  </button>
+                ))}
+              </div>
+              <Progress value={progressPercentage} className="h-2" />
+            </div>
+
+            {/* Form steps */}
+            <div className="mt-6">{renderStep()}</div>
+
+            {/* Navigation buttons */}
+            <div className="flex justify-between mt-8">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrevious}
+                disabled={currentStep === 0 || isSubmitting}
+              >
+                Previous
+              </Button>
+
+              {currentStep < steps.length - 1 ? (
+                <Button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={isSubmitting}
+                  className="bg-purple-600 hover:bg-purple-700"
                 >
-                  {step.label}
-                </div>
-              ))}
+                  Next
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {isSubmitting ? "Submitting..." : "Submit"}
+                </Button>
+              )}
             </div>
-            <Progress value={progressPercentage} className="h-2" />
-          </div>
-
-          {/* Form steps */}
-          <div className="mt-6">{renderStep()}</div>
-
-          {/* Navigation buttons */}
-          <div className="flex justify-between mt-8">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handlePrevious}
-              disabled={currentStep === 0 || isSubmitting}
-            >
-              Previous
-            </Button>
-
-            {currentStep < steps.length - 1 ? (
-              <Button
-                type="button"
-                onClick={handleNext}
-                disabled={isSubmitting}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                {isSubmitting ? "Submitting..." : "Submit"}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-600">
-            Already have an account?{" "}
-            <Link href="/auth/employee/login" className="text-blue-600 hover:underline">
-              Sign in
-            </Link>
-          </p>
-        </CardFooter>
+          </CardContent>
+          <CardFooter className="flex justify-center px-0">
+            <p className="text-sm text-gray-600">
+              Already have an account?{" "}
+              <Link href="/auth/employee/login" className="text-blue-600 hover:underline">
+                Sign in
+              </Link>
+            </p>
+          </CardFooter>
+        </div>
       </Card>
     </div>
   )

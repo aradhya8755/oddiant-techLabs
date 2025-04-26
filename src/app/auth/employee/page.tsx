@@ -6,8 +6,8 @@ import { LogIn, Briefcase } from "lucide-react"
 export default function EmployeeAuthPage() {
   return (
     <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-3xl font-bold mb-2 text-center text-white">Employee Portal</h1>
-      <p className="mb-8 text-center text-white">Oddiant Techlabs Internal System</p>
+      <h1 className="text-3xl font-bold mb-2 text-center text-white">Employers Portal</h1>
+      <p className="mb-8 text-center text-white">Find, Hire & Manage Talent with us</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
         <Card className="w-full transition-all duration-300 hover:shadow-lg">
@@ -20,12 +20,12 @@ export default function EmployeeAuthPage() {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-gray-500 mb-6">
-              Sign up with your company email to access the dashboard and internal tools.
+              Sign up with your official email to access the dashboard and manage talent.
             </p>
           </CardContent>
           <CardFooter className="flex justify-center">
             <Link href="/auth/employee/register">
-              <Button size="lg" className="w-full bg-purple-600 hover:bg-purple-700">
+              <Button size="lg" className="w-full bg-black text-white hover:bg-green-500 hover:text-black">
                 Register Now
               </Button>
             </Link>
@@ -47,7 +47,7 @@ export default function EmployeeAuthPage() {
           </CardContent>
           <CardFooter className="flex justify-center">
             <Link href="/auth/employee/login">
-              <Button size="lg" variant="outline" className="w-full hover:bg-green-500 hover:text-black">
+              <Button size="lg" variant="outline" className="w-full bg-black text-white hover:bg-green-500 hover:text-black">
                 Sign In
               </Button>
             </Link>

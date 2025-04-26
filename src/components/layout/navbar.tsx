@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 
@@ -71,17 +71,14 @@ export function Navbar() {
               Contact Us
             </Link>
 
-            {/* User and Employee buttons */}
-            <Link href="/auth/user">
+            {/* Join Now button replacing User and Employers buttons */}
+            <Link href="/join-now">
               <Button
                 variant="outline"
-                className="bg-transparent text-white border-white hover:bg-white hover:text-black"
+                className="bg-black text-white border-white hover:bg-green-500 hover:text-black"
               >
-                User
+                Join Now
               </Button>
-            </Link>
-            <Link href="/auth/employee">
-              <Button className="bg-green-600 hover:bg-green-700 text-white">Employee</Button>
             </Link>
           </nav>
 
@@ -93,6 +90,9 @@ export function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent className="bg-black text-white">
+              {/* Added SheetTitle for accessibility */}
+              <SheetTitle className="text-white sr-only">Navigation Menu</SheetTitle>
+
               <div className="flex flex-col space-y-6 mt-10">
                 <Link
                   href="/"
@@ -123,17 +123,14 @@ export function Navbar() {
                   Contact Us
                 </Link>
 
-                <div className="pt-4 flex flex-col space-y-4">
-                  <Link href="/auth/user" onClick={() => setIsOpen(false)}>
+                <div className="pt-4">
+                  <Link href="/join-now" onClick={() => setIsOpen(false)}>
                     <Button
                       variant="outline"
-                      className="w-full bg-transparent text-white border-white hover:bg-white hover:text-black"
+                      className="w-full bg-transparent hover:bg-green-500 hover:text-black text-white border-white"
                     >
-                      User
+                      Join Now
                     </Button>
-                  </Link>
-                  <Link href="/auth/employee" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full bg-green-600 hover:bg-green-700 text-white">Employee</Button>
                   </Link>
                 </div>
               </div>

@@ -8,6 +8,7 @@ interface EmailOptions {
   attachments?: Array<{
     filename: string
     content: any
+    contentType?: string
   }>
 }
 
@@ -43,6 +44,17 @@ export async function sendEmail(options: EmailOptions) {
 
     console.log("Sending email to:", emailTo)
 
+    // Ensure attachments have proper content type
+    const processedAttachments = options.attachments?.map((attachment) => {
+      if (attachment.filename.endsWith(".xlsx") && !attachment.contentType) {
+        return {
+          ...attachment,
+          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }
+      }
+      return attachment
+    })
+
     // Send the email
     const info = await transporter.sendMail({
       from: `"Oddiant Techlabs" <${emailUser}>`,
@@ -50,7 +62,7 @@ export async function sendEmail(options: EmailOptions) {
       subject: options.subject,
       text: options.text,
       html: options.html,
-      attachments: options.attachments,
+      attachments: processedAttachments,
     })
 
     console.log("Email sent successfully:", info.messageId)

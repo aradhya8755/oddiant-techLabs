@@ -31,7 +31,7 @@ export type FormData = {
   // Educational Qualifications
   education: Array<{
     level: string
-    mode:string
+    mode: string
     degree: string
     school: string
     startingYear: string
@@ -97,7 +97,7 @@ const initialFormData: FormData = {
   profileOutline: "",
 
   // Educational Qualifications
-  education: [{ level: "",mode:"", degree: "", school: "", startingYear: "", endingYear: "", percentage: "" }],
+  education: [{ level: "", mode: "", degree: "", school: "", startingYear: "", endingYear: "", percentage: "" }],
   certifications: [""],
 
   // Professional Experience
@@ -229,16 +229,20 @@ export default function RegisterForm() {
 
   return (
     <div className="space-y-6">
-      {/* Progress indicator */}
+      {/* Progress indicator with clickable steps */}
       <div className="space-y-2.5">
         <div className="flex justify-between">
           {steps.map((step, index) => (
-            <div
+            <button
               key={step.id}
-              className={`text-sm font-medium ${index <= currentStep ? "text-blue-600" : "text-gray-400"}`}
+              onClick={() => setCurrentStep(index)}
+              className={`text-sm font-medium cursor-pointer ${
+                index <= currentStep ? "text-blue-600" : "text-gray-400"
+              } hover:text-blue-800 transition-colors`}
+              type="button"
             >
               {step.label}
-            </div>
+            </button>
           ))}
         </div>
         <Progress value={progressPercentage} className="h-2" />
@@ -258,7 +262,12 @@ export default function RegisterForm() {
             Next
           </Button>
         ) : (
-          <Button className="hover:bg-green-500 hover:text-black" type="button" onClick={handleSubmit} disabled={isSubmitting}>
+          <Button
+            className="hover:bg-green-500 hover:text-black"
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
             {isSubmitting ? "Submitting..." : "Submit"}
           </Button>
         )}

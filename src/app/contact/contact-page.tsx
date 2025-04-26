@@ -180,6 +180,13 @@ ${formData.message}
 
       {/* Hero Section */}
       <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full bg-zinc-900/30" />
+          <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-blue-500/10 rounded-full filter blur-3xl" />
+          <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full filter blur-3xl" />
+        </div>
+
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">Contact Us</h1>

@@ -676,7 +676,7 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
 
       <div className="space-y-2 relative">
         <Label htmlFor="companyLocation">
-          Company Location <span className="text-red-500">*</span>
+          Company Headquarters <span className="text-red-500">*</span>
         </Label>
         <div className="relative">
           <Input

@@ -6,6 +6,32 @@ import { uploadToCloudinary } from "@/lib/cloudinary"
 
 export async function POST(request: NextRequest) {
   try {
+    // List of disallowed email domains
+    const disallowedDomains = [
+      "gmail.com",
+      "outlook.com",
+      "hotmail.com",
+      "live.com",
+      "yahoo.com",
+      "icloud.com",
+      "zoho.com",
+      "gmx.com",
+      "mail.com",
+      "yandex.com",
+      "aol.com",
+    ]
+
+    // Function to validate email domain
+    const validateEmailDomain = (email: string) => {
+      // Extract domain from email
+      const domain = email.split("@")[1].toLowerCase()
+
+      // Check if domain is in the disallowed list
+      if (disallowedDomains.includes(domain)) {
+        return false
+      }
+      return true
+    }
     // Check if request is multipart/form-data
     const contentType = request.headers.get("content-type") || ""
 
@@ -54,9 +80,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate email domain for company email
-      if (!email.endsWith("@oddiant.com")) {
+      if (!validateEmailDomain(email)) {
         return NextResponse.json(
-          { success: false, message: "Only official company email (@oddiant.com) is allowed" },
+          { success: false, message: "Personal email domains are not allowed. Please use your company email address." },
           { status: 400 },
         )
       }
@@ -228,9 +254,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate email domain for company email
-      if (!body.email.endsWith("@oddiant.com")) {
+      if (!validateEmailDomain(body.email)) {
         return NextResponse.json(
-          { success: false, message: "Only official company email (@oddiant.com) is allowed" },
+          { success: false, message: "Personal email domains are not allowed. Please use your company email address." },
           { status: 400 },
         )
       }

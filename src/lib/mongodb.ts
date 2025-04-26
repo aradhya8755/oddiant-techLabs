@@ -1,52 +1,58 @@
 import { MongoClient, type Db } from "mongodb"
 
-let cachedClient: MongoClient | null = null
-let cachedDb: Db | null = null
+const MONGODB_URI = process.env.MONGODB_URI
+const MONGODB_DB = process.env.MONGODB_DB
 
-export async function connectToDatabase() {
-  // Get MongoDB URI from environment variables
-  const uri = process.env.MONGODB_URI
+if (!MONGODB_URI) {
+  throw new Error("Please define the MONGODB_URI environment variable inside .env.local")
+}
 
-  if (!uri) {
-    console.error("MONGODB_URI is not defined")
-    throw new Error("Please define the MONGODB_URI environment variable")
+if (!MONGODB_DB) {
+  throw new Error("Please define the MONGODB_DB environment variable inside .env.local")
+}
+
+/**
+ * Global is used here to maintain a cached connection across hot reloads
+ * in development. This prevents connections growing exponentially
+ * during API Route usage.
+ */
+// @ts-ignore
+let cached = global.mongo
+
+if (!cached) {
+  // @ts-ignore
+  cached = global.mongo = { conn: null, promise: null }
+}
+
+interface MongoConnection {
+  conn: {
+    client: MongoClient
+    db: Db
+  } | null
+  promise: Promise<{
+    client: MongoClient
+    db: Db
+  }> | null
+}
+
+export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
+  if (cached.conn) {
+    return cached.conn
   }
 
-  // If we already have a connection, use it
-  if (cachedClient && cachedDb) {
-    console.log("Using cached database connection")
-    return { client: cachedClient, db: cachedDb }
-  }
+  if (!cached.promise) {
+    const opts = {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }
 
-  try {
-    console.log("Creating new database connection")
-
-    // Connect to the MongoDB database with improved options
-    const client = new MongoClient(uri, {
-      // Add connection timeout
-      connectTimeoutMS: 10000,
-      // Add socket timeout
-      socketTimeoutMS: 30000,
-      // Add server selection timeout
-      serverSelectionTimeoutMS: 10000,
+    cached.promise = MongoClient.connect(MONGODB_URI as string, opts as any).then((client) => {
+      return {
+        client,
+        db: client.db(MONGODB_DB),
+      }
     })
-
-    console.log("Connecting to MongoDB...")
-    await client.connect()
-    console.log("Connected to MongoDB successfully")
-
-    const dbName = process.env.MONGODB_DB || "oddiant"
-    console.log(`Using database: ${dbName}`)
-    const db = client.db(dbName)
-
-    // Cache the connection
-    cachedClient = client
-    cachedDb = db
-    console.log("Database connection cached")
-
-    return { client, db }
-  } catch (error) {
-    console.error("MongoDB connection error:", error)
-    throw new Error(`Failed to connect to database: ${error instanceof Error ? error.message : String(error)}`)
   }
+  cached.conn = await cached.promise
+  return cached.conn
 }

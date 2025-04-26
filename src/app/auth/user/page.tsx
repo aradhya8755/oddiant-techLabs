@@ -24,7 +24,7 @@ export default function UserAuthPage() {
           </CardContent>
           <CardFooter className="flex justify-center">
             <Link href="/auth/register">
-              <Button size="lg" className="w-full">
+              <Button size="lg" className="w-full hover:bg-green-500 hover:text-black">
                 Register Now
               </Button>
             </Link>
@@ -46,7 +46,7 @@ export default function UserAuthPage() {
           </CardContent>
           <CardFooter className="flex justify-center">
             <Link href="/auth/login">
-              <Button size="lg" variant="outline" className="w-full hover:text-black hover:bg-green-500">
+              <Button size="lg" variant="outline" className="w-full hover:text-black text-white bg-black hover:bg-green-500">
                 Sign In
               </Button>
             </Link>

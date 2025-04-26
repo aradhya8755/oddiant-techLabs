@@ -22,11 +22,34 @@ export default function EmployeeAccountSetup({ formData, updateFormData }: Accou
     confirmPassword: "",
   })
 
+  // List of disallowed email domains
+  const disallowedDomains = [
+    "gmail.com",
+    "outlook.com",
+    "hotmail.com",
+    "live.com",
+    "yahoo.com",
+    "icloud.com",
+    "zoho.com",
+    "gmx.com",
+    "mail.com",
+    "yandex.com",
+    "aol.com",
+  ]
+
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!email) return "Email is required"
     if (!emailRegex.test(email)) return "Please enter a valid email address"
-    if (!email.endsWith("@oddiant.com")) return "Only company email (@oddiant.com) is allowed"
+
+    // Extract domain from email
+    const domain = email.split("@")[1].toLowerCase()
+
+    // Check if domain is in the disallowed list
+    if (disallowedDomains.includes(domain)) {
+      return "Personal email domains are not allowed. Please use your company email address."
+    }
+
     return ""
   }
 
@@ -78,14 +101,16 @@ export default function EmployeeAccountSetup({ formData, updateFormData }: Accou
           id="email"
           name="email"
           type="email"
-          placeholder="name@oddiant.com"
+          placeholder="name@domain.com"
           value={formData.email}
           onChange={handleChange}
           required
           className={errors.email ? "border-red-500" : ""}
         />
         {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
-        <p className="text-xs text-gray-500">You must use your official company email address (@oddiant.com)</p>
+        <p className="text-xs text-gray-500">
+          You must use your official company email address (personal email domains are not allowed)
+        </p>
       </div>
 
       <div className="space-y-2">

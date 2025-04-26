@@ -91,23 +91,20 @@ export default function EmployeeDocuments({ formData, updateFormData }: Document
                 errors.documentType ? "border-red-300" : "border-gray-300"
               } focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
             >
-              <option value="" disabled>
+              <option value="" disabled>  
                 Select document type
               </option>
-              <option value="aadhar">Aadhar Card</option>
+              <option value="gst">GST Certificate</option>
               <option value="pan">PAN Card</option>
-              <option value="passport">Passport</option>
-              <option value="driving_license">Driving License</option>
-              <option value="voter_id">Voter ID</option>
-              <option value="other">Other</option>
+              <option value="incorporation_certificate">Incorporation Certificate</option>
             </select>
             {errors.documentType && <p className="text-sm text-red-500">{errors.documentType}</p>}
           </div>
 
-          {/* KYC Number Input */}
+          {/* Document Number Input */}
           <div className="space-y-2">
-            <Label htmlFor="kycNumber">
-              KYC Number <span className="text-red-500">*</span>
+            <Label htmlFor="documentNumber">
+              Document Number <span className="text-red-500">*</span>
             </Label>
             <Input
               id="kycNumber"

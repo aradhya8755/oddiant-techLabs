@@ -75,20 +75,21 @@ export async function POST(request: NextRequest) {
       console.log("Submission inserted successfully")
 
       try {
-        // Generate Excel file
-        console.log("Generating Excel file...")
+        // Generate Excel file with ALL submissions, not just the new one
+        console.log("Generating Excel file with all submissions...")
         const excelBuffer = await generateExcel([contactSubmission])
-        console.log("Excel file generated successfully")
+        console.log("Excel file generated successfully, buffer size:", excelBuffer.length)
 
         // Send email notification with Excel attachment
         console.log("Sending email...")
         await sendEmail({
           subject: `New Contact Form Submission from ${body.name}`,
-          text: `You have received a new contact form submission from ${body.name} (${body.email}).\n\nService: ${body.service}\nMessage: ${body.message}`,
+          text: `You have received a new contact form submission from ${body.name} (${body.email}).\n\nService: ${body.service}\nMessage: ${body.message}\n\nAll submissions are included in the attached Excel file.`,
           attachments: [
             {
-              filename: `contact_submission_${new Date().toISOString().split("T")[0]}.xlsx`,
+              filename: "contact_submissions.xlsx", // Consistent filename for all emails
               content: excelBuffer,
+              contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             },
           ],
         })

@@ -13,6 +13,7 @@ export default function VerifyPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = searchParams.get("email")
+  const userType = searchParams.get("userType") || "student"
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""])
   const [isVerifying, setIsVerifying] = useState(false)
@@ -20,7 +21,7 @@ export default function VerifyPage() {
 
   useEffect(() => {
     if (!email) {
-      router.push("/auth/register")
+      router.push(userType === "employee" ? "/auth/employee/register" : "/auth/register")
       return
     }
 
@@ -35,7 +36,7 @@ export default function VerifyPage() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [email, router])
+  }, [email, router, userType])
 
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) {
@@ -84,7 +85,7 @@ export default function VerifyPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, otp: otpValue }),
+        body: JSON.stringify({ email, otp: otpValue, userType }),
       })
 
       const data = await response.json()
@@ -94,7 +95,14 @@ export default function VerifyPage() {
       }
 
       toast.success("Email verified successfully!")
-      router.push("/auth/login")
+
+      // For employees, redirect to pending approval page
+      if (data.pendingApproval) {
+        router.push(`/auth/verify-pending?email=${encodeURIComponent(email)}&userType=${userType}`)
+      } else {
+        // For students, redirect to login
+        router.push(userType === "employee" ? "/auth/employee/login" : "/auth/login")
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Verification failed")
     } finally {
@@ -109,7 +117,7 @@ export default function VerifyPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, userType }),
       })
 
       const data = await response.json()
