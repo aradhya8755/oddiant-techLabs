@@ -1,26 +1,27 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const employeeId = params.id
+    // Await the params object before accessing its properties
+    const { id: employeeId } = await params
 
     if (!employeeId) {
       return NextResponse.json({ success: false, message: "Employee ID is required" }, { status: 400 })
     }
 
-    // Connect to database
     const { db } = await connectToDatabase()
 
-    // Find employee by ID
     const employee = await db.collection("employees").findOne({ _id: new ObjectId(employeeId) })
 
     if (!employee) {
       return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 })
     }
 
-    // Remove sensitive information
     const { password, ...employeeData } = employee
 
     return NextResponse.json({ success: true, employee: employeeData }, { status: 200 })
