@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
             verified: true,
             verifiedAt: new Date(),
             updatedAt: new Date(),
+            status: "verified", // Add status field for consistency
           },
           $unset: { rejected: "", rejectedAt: "", rejectionReason: "", rejectionComments: "" },
         },
@@ -89,7 +90,9 @@ The Oddiant Techlabs Team`,
             rejectionReason,
             rejectionComments: rejectionComments || "",
             updatedAt: new Date(),
+            status: "rejected", // Add status field for consistency
           },
+          $unset: { verified: "", verifiedAt: "" },
         },
       )
 

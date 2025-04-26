@@ -6,7 +6,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { toast, Toaster } from "sonner"
-import { CheckCircle, XCircle, User, MapPin, Building, Phone, Mail, FileText } from "lucide-react"
+import { CheckCircle, XCircle, User, MapPin, Building, Phone, Mail, FileText, ArrowLeft, Trash2 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function VerifyEmployeePage() {
   const params = useParams()
@@ -14,6 +24,7 @@ export default function VerifyEmployeePage() {
   const [employee, setEmployee] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const employeeId = params.id as string
 
   useEffect(() => {
@@ -74,6 +85,37 @@ export default function VerifyEmployeePage() {
     router.push(`/admin/verify-employee/${employeeId}/reject`)
   }
 
+  const handleDelete = async () => {
+    setIsProcessing(true)
+    try {
+      const response = await fetch(`/api/admin/employee/${employeeId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete employee")
+      }
+
+      toast.success("Employee deleted successfully")
+      setTimeout(() => {
+        router.push("/admin/employees")
+      }, 2000)
+    } catch (error) {
+      toast.error("Failed to delete employee")
+      console.error(error)
+    } finally {
+      setIsProcessing(false)
+      setIsDeleteDialogOpen(false)
+    }
+  }
+
+  const handleBackToEmployees = () => {
+    router.push("/admin/employees")
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -100,10 +142,26 @@ export default function VerifyEmployeePage() {
     )
   }
 
+  // Fix for company website URL - ensure it has proper protocol
+  const formatWebsiteUrl = (url: string) => {
+    if (!url) return ""
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      return url
+    }
+    return `https://${url}`
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <Toaster position="top-center" />
       <div className="container mx-auto px-4 max-w-4xl">
+        <div className="mb-6">
+          <Button variant="outline" onClick={handleBackToEmployees} className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Employees
+          </Button>
+        </div>
+
         <Card>
           <CardHeader className="bg-purple-50">
             <div className="flex justify-between items-start">
@@ -191,7 +249,7 @@ export default function VerifyEmployeePage() {
                   <div className="mt-3">
                     <p className="text-sm font-medium text-gray-500">Website</p>
                     <a
-                      href={employee.companyWebsite}
+                      href={formatWebsiteUrl(employee.companyWebsite)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline"
@@ -262,15 +320,26 @@ export default function VerifyEmployeePage() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-between border-t p-6">
-            <Button
-              variant="outline"
-              onClick={handleReject}
-              disabled={isProcessing}
-              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-            >
-              <XCircle className="mr-2 h-4 w-4" />
-              Reject
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleReject}
+                disabled={isProcessing}
+                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Reject
+              </Button>
+              {/* <Button
+                variant="outline"
+                onClick={() => setIsDeleteDialogOpen(true)}
+                disabled={isProcessing}
+                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button> */}
+            </div>
             <Button onClick={handleVerify} disabled={isProcessing} className="bg-green-600 hover:bg-green-700">
               <CheckCircle className="mr-2 h-4 w-4" />
               {isProcessing ? "Processing..." : "Approve Employee"}
@@ -278,6 +347,28 @@ export default function VerifyEmployeePage() {
           </CardFooter>
         </Card>
       </div>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this employee?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the employee account and all associated data
+              from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isProcessing}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {isProcessing ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

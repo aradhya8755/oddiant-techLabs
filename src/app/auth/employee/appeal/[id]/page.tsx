@@ -2,117 +2,242 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { toast, Toaster } from "sonner"
-import { AlertCircle, FileText, Upload } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Skeleton } from "@/components/ui/skeleton"
+import { AlertCircle, CheckCircle, X } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+
+interface EmployeeData {
+  employee: {
+    firstName: string | null
+    middleName: string | null
+    lastName: string | null
+    phone: string | null
+    designation: string | null
+    linkedinProfile: string | null
+    companyName: string | null
+    companyLocation: string | null
+    companyIndustry: string | null
+    teamSize: string | null
+    documentType: string | null
+    kycNumber: string | null
+    email: string | null
+    rejectionReason?: string | null
+    rejectionComments?: string | null
+    kycDetails?: {
+      documentType: string | null
+      kycNumber: string | null
+    }
+  }
+}
+
+// Custom notification component to replace toast
+interface NotificationProps {
+  title: string
+  description: string
+  variant?: "default" | "destructive"
+  onClose: () => void
+}
+
+function Notification({ title, description, variant = "default", onClose }: NotificationProps) {
+  return (
+    <div
+      className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg flex items-start gap-3 ${
+        variant === "destructive"
+          ? "bg-red-50 border border-red-200 text-red-800"
+          : "bg-green-50 border border-green-200 text-green-800"
+      }`}
+    >
+      <div className="shrink-0 mt-0.5">
+        {variant === "destructive" ? (
+          <AlertCircle className="h-5 w-5 text-red-600" />
+        ) : (
+          <CheckCircle className="h-5 w-5 text-green-600" />
+        )}
+      </div>
+      <div className="flex-1">
+        <h3 className="font-medium text-sm">{title}</h3>
+        <p className="text-sm mt-1">{description}</p>
+      </div>
+      <button onClick={onClose} className="shrink-0">
+        <X className="h-4 w-4 opacity-70" />
+        <span className="sr-only">Close</span>
+      </button>
+    </div>
+  )
+}
 
 export default function AppealPage() {
-  const params = useParams()
   const router = useRouter()
-  const [employee, setEmployee] = useState<any>(null)
+  const { id } = useParams()
+  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Custom notification state
+  const [notification, setNotification] = useState<{
+    show: boolean
+    title: string
+    description: string
+    variant: "default" | "destructive"
+  } | null>(null)
+
   const [formData, setFormData] = useState({
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    phone: "",
+    designation: "",
+    linkedinProfile: "",
+    companyName: "",
+    companyLocation: "",
+    companyIndustry: "",
+    teamSize: "",
     documentType: "",
     documentNumber: "",
+    email: "",
     documentFile: null as File | null,
-    appealReason: "",
+    reason: "",
   })
-  const employeeId = params.id as string
+
+  // Function to show notification (replacement for toast)
+  const showNotification = (title: string, description: string, variant: "default" | "destructive" = "default") => {
+    setNotification({
+      show: true,
+      title,
+      description,
+      variant,
+    })
+
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+      setNotification(null)
+    }, 5000)
+  }
 
   useEffect(() => {
     const fetchEmployeeData = async () => {
       try {
-        const response = await fetch(`/api/employee/appeal/${employeeId}`)
+        // Use the correct API endpoint
+        const response = await fetch(`/api/employee/appeal/${id}`, {
+          cache: "no-store",
+          headers: {
+            pragma: "no-cache",
+            "cache-control": "no-cache",
+          },
+        })
 
         if (!response.ok) {
-          throw new Error("Failed to fetch employee data")
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
 
         const data = await response.json()
-        setEmployee(data.employee)
+        setEmployeeData(data)
+        console.log("Employee data:", data)
 
         // Initialize form data with existing values
         setFormData({
+          firstName: data.employee.firstName || "",
+          middleName: data.employee.middleName || "",
+          lastName: data.employee.lastName || "",
+          phone: data.employee.phone || "",
+          designation: data.employee.designation || "",
+          linkedinProfile: data.employee.linkedinProfile || "",
+          companyName: data.employee.companyName || "",
+          companyLocation: data.employee.companyLocation || "",
+          companyIndustry: data.employee.companyIndustry || "",
+          teamSize: data.employee.teamSize || "",
           documentType: data.employee.documentType || data.employee.kycDetails?.documentType || "",
           documentNumber: data.employee.kycNumber || data.employee.kycDetails?.kycNumber || "",
+          email: data.employee.email || "",
           documentFile: null,
-          appealReason: "",
+          reason: "",
         })
       } catch (error) {
-        toast.error("Error loading employee data")
-        console.error(error)
+        console.error("Could not fetch employee data:", error)
+        showNotification("Error!", "Failed to fetch employee data. Please try again.", "destructive")
       } finally {
         setIsLoading(false)
       }
     }
 
-    if (employeeId) {
-      fetchEmployeeData()
-    }
-  }, [employeeId])
+    fetchEmployeeData()
+  }, [id])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    setFormData((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }))
+  }
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFormData((prev) => ({ ...prev, documentFile: e.target.files![0] }))
-    }
+    const file = e.target.files?.[0]
+    setFormData((prevState) => ({
+      ...prevState,
+      documentFile: file || null,
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!formData.documentType || !formData.documentNumber) {
-      toast.error("Please fill in all required fields")
-      return
-    }
-
-    if (!formData.documentFile && !employee.documents?.kyc) {
-      toast.error("Please upload a document")
-      return
-    }
-
     setIsSubmitting(true)
 
     try {
-      // Create form data for file upload
-      const submitData = new FormData()
-      submitData.append("employeeId", employeeId)
-      submitData.append("documentType", formData.documentType)
-      submitData.append("documentNumber", formData.documentNumber)
-      submitData.append("appealReason", formData.appealReason)
+      const formDataToSend = new FormData()
 
-      if (formData.documentFile) {
-        submitData.append("document", formData.documentFile)
-      }
-
-      const response = await fetch("/api/employee/appeal", {
-        method: "POST",
-        body: submitData,
+      // Add all form fields to FormData
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          formDataToSend.append(key, value.toString())
+        }
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to submit appeal")
-      }
+      // Add the employee ID
+      formDataToSend.append("employeeId", id.toString())
 
-      toast.success("Appeal submitted successfully")
-      setTimeout(() => {
-        router.push("/auth/appeal-submitted")
-      }, 2000)
+      // Log the form data being sent (for debugging)
+      console.log("Submitting appeal with data:", Object.fromEntries(formDataToSend))
+
+      const response = await fetch(`/api/employee/appeal`, {
+        method: "POST",
+        body: formDataToSend,
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log("Appeal submission result:", result)
+
+        showNotification("Success!", "Appeal submitted successfully!")
+
+        // Redirect after successful submission
+        setTimeout(() => {
+          router.push("/auth/employee")
+        }, 2000)
+      } else {
+        const errorData = await response.json()
+        console.error("Error response:", errorData)
+
+        showNotification("Error!", errorData.message || "Failed to submit appeal. Please try again.", "destructive")
+      }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to submit appeal")
+      console.error("Error submitting appeal:", error)
+      showNotification("Error!", "An unexpected error occurred. Please try again.", "destructive")
     } finally {
       setIsSubmitting(false)
     }
@@ -120,202 +245,271 @@ export default function AppealPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-      </div>
-    )
-  }
-
-  if (!employee) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Employee Not Found</CardTitle>
-            <CardDescription>
-              The employee record you are looking for does not exist or has been removed.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button onClick={() => router.push("/auth/employee/login")} className="w-full">
-              Go to Login
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    )
-  }
-
-  if (!employee.rejected) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Appeal Not Available</CardTitle>
-            <CardDescription>This account is not eligible for appeal.</CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button onClick={() => router.push("/auth/employee/login")} className="w-full">
-              Go to Login
-            </Button>
-          </CardFooter>
-        </Card>
+      <div className="container mx-auto p-4">
+        <Skeleton className="w-[200px] h-[30px] mb-4" />
+        <div className="space-y-2">
+          <Skeleton className="w-[150px] h-[20px]" />
+          <Skeleton className="w-full h-[40px]" />
+        </div>
+        <div className="space-y-2 mt-4">
+          <Skeleton className="w-[150px] h-[20px]" />
+          <Skeleton className="w-full h-[40px]" />
+        </div>
+        <Skeleton className="w-[100px] h-[40px] mt-4" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <Toaster position="top-center" />
-      <div className="container mx-auto px-4 max-w-2xl">
-        <Card>
-          <CardHeader className="bg-blue-50">
-            <CardTitle className="text-2xl">Appeal Rejection & Update Information</CardTitle>
-            <CardDescription>Update your information and documents to appeal the rejection decision</CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-6 pt-6">
-              {/* Rejection Details */}
-              <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
-                <h3 className="font-medium text-amber-800 mb-2">Rejection Details</h3>
-                <p className="text-sm text-amber-700 mb-2">
-                  <strong>Reason:</strong> {employee.rejectionReason || "Not specified"}
-                </p>
-                {employee.rejectionComments && (
-                  <p className="text-sm text-amber-700">
-                    <strong>Comments:</strong> {employee.rejectionComments}
-                  </p>
-                )}
-              </div>
+    <div className="container mx-auto p-4">
+      {/* Render notification if it exists */}
+      {notification && notification.show && (
+        <Notification
+          title={notification.title}
+          description={notification.description}
+          variant={notification.variant}
+          onClose={() => setNotification(null)}
+        />
+      )}
 
-              <Separator />
+      <h1 className="text-2xl font-bold mb-4 text-white">Appeal Form</h1>
 
-              {/* Document Information */}
-              <div>
-                <h3 className="text-lg font-medium mb-4">Update KYC Documents</h3>
+      {employeeData?.employee?.rejectionReason && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Your application was rejected</AlertTitle>
+          <AlertDescription>
+            <p>
+              <strong>Reason:</strong> {employeeData.employee.rejectionReason}
+            </p>
+            {employeeData.employee.rejectionComments && (
+              <p className="mt-2 text-white">
+                <strong>Comments:</strong> {employeeData.employee.rejectionComments}
+              </p>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                   <select>
-                    <option value="" disabled>  
-                Select document type
-              </option>
-              <option value="gst">GST Certificate</option>
-              <option value="pan">PAN Card</option>
-              <option value="incorporation_certificate">Incorporation Certificate</option>
-            </select>
-                      <Input
-                        id="documentType"
-                        name="documentType"
-                        value={formData.documentType}
-                        onChange={handleInputChange}
-                        placeholder="Passport, ID Card, etc."
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="documentNumber">
-                        Document Number <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="documentNumber"
-                        name="documentNumber"
-                        value={formData.documentNumber}
-                        onChange={handleInputChange}
-                        placeholder="Document ID number"
-                        required
-                      />
-                    </div>
-                  </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Personal Information */}
+        <div>
+          <h3 className="text-lg font-medium mb-4 text-white">Personal Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2 text-white">
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleInputChange}
+                placeholder="First Name"
+                required
+              />
+            </div>
+            <div className="space-y-2 text-white">
+              <Label htmlFor="middleName">Middle Name</Label>
+              <Input
+                id="middleName"
+                name="middleName"
+                value={formData.middleName}
+                onChange={handleInputChange}
+                placeholder="Middle Name"
+              />
+            </div>
+            <div className="space-y-2 text-white">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleInputChange}
+                placeholder="Last Name"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="space-y-2 text-white">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="Email Address"
+                required
+              />
+            </div>
+            <div className="space-y-2 text-white">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="Phone Number"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="space-y-2 text-white">
+              <Label htmlFor="designation">Designation</Label>
+              <Input
+                id="designation"
+                name="designation"
+                value={formData.designation}
+                onChange={handleInputChange}
+                placeholder="Designation"
+                required
+              />
+            </div>
+            <div className="space-y-2 text-white">
+              <Label htmlFor="linkedinProfile">LinkedIn Profile</Label>
+              <Input
+                id="linkedinProfile"
+                name="linkedinProfile"
+                value={formData.linkedinProfile}
+                onChange={handleInputChange}
+                placeholder="LinkedIn Profile URL"
+              />
+            </div>
+          </div>
+        </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="documentFile">
-                      Upload Document {!employee.documents?.kyc && <span className="text-red-500">*</span>}
-                    </Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center">
-                      <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500 mb-2">
-                        {formData.documentFile ? formData.documentFile.name : "Click to upload or drag and drop"}
-                      </p>
-                      <p className="text-xs text-gray-400 mb-4">PDF, JPG, or PNG (max 5MB)</p>
-                      <Input
-                        id="documentFile"
-                        type="file"
-                        className="hidden"
-                        onChange={handleFileChange}
-                        accept=".pdf,.jpg,.jpeg,.png"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => document.getElementById("documentFile")?.click()}
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Select File
-                      </Button>
-                    </div>
-                    {employee.documents?.kyc && !formData.documentFile && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Current document: {employee.documents.kyc.filename || "Document.pdf"}
-                        <a
-                          href={employee.documents.kyc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline ml-2"
-                        >
-                          View
-                        </a>
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
+        <Separator />
 
-              <Separator />
+        {/* Company Information */}
+        <div>
+          <h3 className="text-lg font-medium mb-4 text-white">Company Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 text-white">
+              <Label htmlFor="companyName">Company Name</Label>
+              <Input
+                id="companyName"
+                name="companyName"
+                value={formData.companyName}
+                onChange={handleInputChange}
+                placeholder="Company Name"
+                required
+              />
+            </div>
+            <div className="space-y-2 text-white">
+              <Label htmlFor="companyLocation">Company Location</Label>
+              <Input
+                id="companyLocation"
+                name="companyLocation"
+                value={formData.companyLocation}
+                onChange={handleInputChange}
+                placeholder="Company Location"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="space-y-2 text-white">
+              <Label htmlFor="companyIndustry">Company Industry</Label>
+              <Input
+                id="companyIndustry"
+                name="companyIndustry"
+                value={formData.companyIndustry}
+                onChange={handleInputChange}
+                placeholder="Company Industry"
+                required
+              />
+            </div>
+            <div className="space-y-2 text-white">
+              <Label htmlFor="teamSize">Team Size</Label>
+              <Input
+                id="teamSize"
+                name="teamSize"
+                value={formData.teamSize}
+                onChange={handleInputChange}
+                placeholder="Team Size"
+                required
+              />
+            </div>
+          </div>
+        </div>
 
-              {/* Appeal Reason */}
-              <div className="space-y-2">
-                <Label htmlFor="appealReason">Reason for Appeal</Label>
-                <Textarea
-                  id="appealReason"
-                  name="appealReason"
-                  value={formData.appealReason}
-                  onChange={handleInputChange}
-                  placeholder="Please explain why you are appealing this decision and any additional information that might help us reconsider..."
-                  rows={5}
-                  className="resize-none"
-                />
-              </div>
+        <Separator />
 
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 flex">
-                <AlertCircle className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-medium text-blue-800 mb-1">What happens next?</h3>
-                  <p className="text-blue-700 text-sm">
-                    After submitting your appeal, our team will review your updated information within 48 hours. You
-                    will receive an email notification once a decision has been made.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between border-t p-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/auth/employee/login")}
-                disabled={isSubmitting}
+        {/* Document Information */}
+        <div>
+          <h3 className="text-lg font-medium mb-4 text-white">Update KYC Documents</h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 text-white">
+              <Label htmlFor="documentType">Document Type</Label>
+              <Select
+                value={formData.documentType}
+                onValueChange={(value) => handleSelectChange("documentType", value)}
               >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700">
-                {isSubmitting ? "Submitting..." : "Submit Appeal"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
-      </div>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select document type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Passport">Passport</SelectItem>
+                  <SelectItem value="Driving License">Driving License</SelectItem>
+                  <SelectItem value="National ID">National ID</SelectItem>
+                  <SelectItem value="Voter ID">Voter ID</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 text-white">
+              <Label htmlFor="documentNumber">Document Number</Label>
+              <Input
+                id="documentNumber"
+                name="documentNumber"
+                value={formData.documentNumber}
+                onChange={handleInputChange}
+                placeholder="Enter document number"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 mt-4 text-white">
+            <Label htmlFor="documentFile">Upload Document</Label>
+            <Input
+              type="file"
+              id="documentFile"
+              name="documentFile"
+              onChange={handleFileChange}
+              accept=".pdf,.jpeg,.png,.jpg"
+              required={!formData.documentNumber}
+            />
+            {formData.documentFile && (
+              <p className="text-sm text-green-600 mt-1">Selected File: {formData.documentFile.name}</p>
+            )}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Reason for Appeal */}
+        <div className="space-y-2 text-white">
+          <Label htmlFor="reason">Reason for Appeal</Label>
+          <Textarea
+            id="reason"
+            name="reason"
+            value={formData.reason}
+            onChange={handleInputChange}
+            placeholder="Please explain why you are appealing the rejection and what changes you have made to address the concerns."
+            className="resize-none"
+            rows={5}
+            required
+          />
+        </div>
+
+        <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto">
+          {isSubmitting ? "Submitting..." : "Submit Appeal"}
+        </Button>
+      </form>
     </div>
   )
 }
