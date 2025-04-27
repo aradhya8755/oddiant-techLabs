@@ -1,15 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
-import { auth } from "@/lib/auth"
+import { getUserFromRequest } from "@/lib/auth"
 import { uploadToCloudinary } from "@/lib/cloudinary"
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth()
+    // Use getUserFromRequest instead of auth()
+    const userId = await getUserFromRequest(req)
 
-    if (!session?.user) {
-      return new NextResponse("Unauthorized", { status: 403 })
+    if (!userId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 })
     }
 
     const formData = await req.formData()
@@ -121,7 +122,6 @@ export async function POST(req: NextRequest) {
         kycNumber: documentNumber,
       },
       rejected: false, // Remove rejected status
-      $unset: { rejectedAt: "", rejectionReason: "", rejectionComments: "" },
     }
 
     // Add optional fields if they exist
@@ -139,8 +139,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Update employee record
-    const result = await db.collection("employees").updateOne({ _id: new ObjectId(employeeId) }, { $set: updateData })
+    // Update employee record - Fixed the update operation
+    const result = await db.collection("employees").updateOne(
+      { _id: new ObjectId(employeeId) },
+      {
+        $set: updateData,
+        $unset: { rejectedAt: "", rejectionReason: "", rejectionComments: "" },
+      },
+    )
 
     if (result.modifiedCount === 0) {
       return NextResponse.json(
@@ -155,7 +161,7 @@ export async function POST(req: NextRequest) {
     // Create appeal record
     const appeal = await db.collection("appeals").insertOne({
       employeeId: new ObjectId(employeeId),
-      userId: session.user.id,
+      userId: new ObjectId(userId),
       reason,
       status: "pending",
       createdAt: new Date(),

@@ -1,41 +1,70 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { cookies as getCookies } from "next/headers"; // renamed to avoid confusion
-import { sign, verify } from "jsonwebtoken";
-import bcrypt from "bcryptjs";
-import { connectToDatabase } from "./mongodb";
-import { ObjectId } from "mongodb";
+import { type NextRequest, NextResponse } from "next/server"
+import { cookies as getCookies } from "next/headers" 
+import { sign, verify } from "jsonwebtoken"
+import bcrypt from "bcryptjs"
+import { connectToDatabase } from "./mongodb"
+import { ObjectId } from "mongodb"
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const TOKEN_EXPIRATION = "1d";
+const JWT_SECRET = process.env.JWT_SECRET
+const TOKEN_EXPIRATION = "1d"
+
+// Add the auth function that was missing
+export async function auth() {
+  try {
+    const cookieStore = await getCookies()
+    const token = cookieStore.get("auth_token")?.value
+
+    if (!token) {
+      return null
+    }
+
+    const decoded = verifyToken(token)
+    if (!decoded?.userId) {
+      return null
+    }
+
+    const user = await getUserById(decoded.userId)
+    if (!user) {
+      return null
+    }
+
+    return {
+      user,
+    }
+  } catch (error) {
+    console.error("Auth error:", error)
+    return null
+  }
+}
 
 // Hash password
 export async function hashPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10);
-  return bcrypt.hash(password, salt);
+  const salt = await bcrypt.genSalt(10)
+  return bcrypt.hash(password, salt)
 }
 
 // Compare password with hash
 export async function comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword);
+  return bcrypt.compare(password, hashedPassword)
 }
 
 // Generate JWT token
 export function generateToken(userId: string): string {
-  return sign({ userId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRATION });
+  return sign({ userId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRATION })
 }
 
 // Verify JWT token
 export function verifyToken(token: string): { userId: string } | null {
   try {
-    return verify(token, JWT_SECRET) as { userId: string };
+    return verify(token, JWT_SECRET) as { userId: string }
   } catch (error) {
-    return null;
+    return null
   }
 }
 
 // Set JWT token in cookies
-export async function setAuthCookie(token: string, response: NextResponse): Promise<void> {
-  const cookieStore = await getCookies(); // await cookies()
+export async function setAuthCookie(token: string): Promise<void> {
+  const cookieStore = await getCookies()
   cookieStore.set({
     name: "auth_token",
     value: token,
@@ -44,51 +73,61 @@ export async function setAuthCookie(token: string, response: NextResponse): Prom
     maxAge: 60 * 60 * 24, // 1 day
     path: "/",
     sameSite: "lax",
-  });
+  })
 }
 
 // Clear auth cookie
 export async function clearAuthCookie(): Promise<void> {
-  const cookieStore = await getCookies();
-  cookieStore.delete("auth_token");
+  const cookieStore = await getCookies()
+  cookieStore.delete("auth_token")
 }
 
 // Get user ID from request
 export async function getUserFromRequest(req: NextRequest): Promise<string | null> {
-  const token = req.cookies.get("auth_token")?.value;
+  const token = req.cookies.get("auth_token")?.value
   if (!token) {
-    return null;
+    return null
   }
-  const decoded = verifyToken(token);
-  return decoded?.userId || null;
+  const decoded = verifyToken(token)
+  return decoded?.userId || null
 }
 
 // Auth middleware
 export async function authMiddleware(req: NextRequest): Promise<NextResponse | null> {
-  const userId = await getUserFromRequest(req);
+  const userId = await getUserFromRequest(req)
   if (!userId) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
   }
-  return null;
+  return null
 }
 
 // Get user by ID
 export async function getUserById(userId: string) {
   try {
-    const { db } = await connectToDatabase();
-    const user = await db.collection("students").findOne({ _id: new ObjectId(userId) });
+    const { db } = await connectToDatabase()
+
+    // Check both collections for the user
+    let user = await db.collection("students").findOne({ _id: new ObjectId(userId) })
+
+    // If not found in students, try employees collection
     if (!user) {
-      return null;
+      user = await db.collection("employees").findOne({ _id: new ObjectId(userId) })
     }
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+
+    if (!user) {
+      return null
+    }
+
+    // Remove password from user object
+    const { password, ...userWithoutPassword } = user
+    return userWithoutPassword
   } catch (error) {
-    console.error("Error getting user by ID:", error);
-    return null;
+    console.error("Error getting user by ID:", error)
+    return null
   }
 }
 
 // Generate OTP
 export function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return Math.floor(100000 + Math.random() * 900000).toString()
 }
