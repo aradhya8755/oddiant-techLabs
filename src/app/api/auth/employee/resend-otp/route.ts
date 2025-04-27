@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { generateOTP } from "@/lib/auth"
-import { sendEmail } from "@/lib/email"
+import { sendEmail } from "../../../../../lib/email"
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
-import { sendEmail } from "@/lib/email"
+import { sendEmail } from "../../../../lib/email"
 import { ObjectId } from "mongodb"
 
 export async function POST(request: NextRequest) {
