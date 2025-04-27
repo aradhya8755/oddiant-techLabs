@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { hashPassword, generateOTP } from "@/lib/auth"
-import { sendEmail } from "@/lib/email"
+import { sendEmail } from "../../../../../lib/email"
 import { uploadToCloudinary } from "@/lib/cloudinary"
 
 export async function POST(request: NextRequest) {
