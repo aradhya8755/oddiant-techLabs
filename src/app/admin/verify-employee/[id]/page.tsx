@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { toast, Toaster } from "sonner"
-import { CheckCircle, XCircle, User, MapPin, Building, Phone, Mail, FileText, ArrowLeft, Trash2 } from "lucide-react"
+import { CheckCircle, XCircle, User, MapPin, Building, Phone, Mail, FileText, ArrowLeft, Link } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -208,6 +208,23 @@ export default function VerifyEmployeePage() {
                     <p className="text-sm font-medium text-gray-500">Designation</p>
                     <p>{employee.designation}</p>
                   </div>
+                  {/* Add LinkedIn Profile */}
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">LinkedIn Profile</p>
+                    {employee.linkedinProfile ? (
+                      <a
+                        href={formatWebsiteUrl(employee.linkedinProfile)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline flex items-center"
+                      >
+                        <Link className="h-4 w-4 mr-1 text-gray-400" />
+                        {employee.linkedinProfile}
+                      </a>
+                    ) : (
+                      <p className="text-gray-400">Not provided</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -256,6 +273,40 @@ export default function VerifyEmployeePage() {
                     >
                       {employee.companyWebsite}
                     </a>
+                  </div>
+                )}
+                {/* Add Company LinkedIn */}
+                {employee.companyLinkedin && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium text-gray-500">Company LinkedIn</p>
+                    <a
+                      href={formatWebsiteUrl(employee.companyLinkedin)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center"
+                    >
+                      <Link className="h-4 w-4 mr-1" />
+                      {employee.companyLinkedin}
+                    </a>
+                  </div>
+                )}
+                {/* Add Social Media Links */}
+                {employee.socialMediaLinks && employee.socialMediaLinks.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium text-gray-500">Social Media</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {employee.socialMediaLinks.map((link: string, index: number) => (
+                        <a
+                          key={index}
+                          href={formatWebsiteUrl(link)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline text-sm bg-blue-50 px-2 py-1 rounded-md"
+                        >
+                          {link}
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -313,6 +364,28 @@ export default function VerifyEmployeePage() {
                         <p className="text-sm font-medium text-gray-500">Rejected On</p>
                         <p className="text-sm text-gray-700">{new Date(employee.rejectedAt).toLocaleString()}</p>
                       </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Add Appeal Information Section */}
+              {employee.appealReason && (
+                <>
+                  <Separator />
+                  <div>
+                    <h3 className="text-lg font-medium text-blue-600">Appeal Information</h3>
+                    <div className="mt-3 bg-blue-50 p-4 rounded-md border border-blue-100">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Appeal Reason</p>
+                        <p className="text-blue-700">{employee.appealReason || "Not specified"}</p>
+                      </div>
+                      {employee.appealedAt && (
+                        <div className="mt-3">
+                          <p className="text-sm font-medium text-gray-500">Appealed On</p>
+                          <p className="text-sm text-gray-700">{new Date(employee.appealedAt).toLocaleString()}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>

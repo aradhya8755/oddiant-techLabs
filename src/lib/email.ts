@@ -17,7 +17,7 @@ export async function sendEmail(options: EmailOptions) {
     // Get email configuration from environment variables
     const emailUser = process.env.EMAIL_USER
     const emailPass = process.env.EMAIL_PASS
-    const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com"
+    const emailHost = process.env.EMAIL_HOST
     const emailPort = Number.parseInt(process.env.EMAIL_PORT || "587", 10)
     const emailTo = options.to || process.env.EMAIL_TO || emailUser
 
