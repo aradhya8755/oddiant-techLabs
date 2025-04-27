@@ -22,7 +22,7 @@ export async function sendEmail(options: EmailOptions) {
     const emailTo = options.to || process.env.EMAIL_TO || emailUser
 
     if (!emailUser || !emailPass) {
-      console.error("Email configuration is missing")
+      console.error("Email configuration is missing!")
       throw new Error("Email configuration is missing. Please check your environment variables.")
     }
 
