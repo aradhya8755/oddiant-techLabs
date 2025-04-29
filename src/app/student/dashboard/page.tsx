@@ -85,7 +85,7 @@ export default function StudentDashboard() {
             <CardDescription>Your session has expired or you are not logged in.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => router.push("/auth/login")} className="w-full">
+            <Button onClick={() => router.push("/auth/login")} className="w-full hover:bg-green-500 hover:text-black">
               Go to Login
             </Button>
           </CardContent>

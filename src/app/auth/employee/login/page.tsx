@@ -78,7 +78,7 @@ export default function EmployeeLoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link href="/auth/employee/forgot-password" className="text-sm text-purple-600 hover:underline">
+                <Link href="/auth/employee/forgot-password" className="text-sm text-blue-600 hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -100,16 +100,16 @@ export default function EmployeeLoginPage() {
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isSubmitting}>
+            <Button type="submit" className="w-full bg-black text-white hover:bg-green-500 hover:text-black" disabled={isSubmitting}>
               {isSubmitting ? "Logging in..." : "Login"}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-gray-600">
-            Not an employee?{" "}
-            <Link href="/auth/login" className="text-purple-600 hover:underline">
-              Student Login
+          Don't have an account? {" "}
+            <Link href="/auth/employee/register" className="text-blue-600 hover:underline">
+              Sign up
             </Link>
           </p>
         </CardFooter>

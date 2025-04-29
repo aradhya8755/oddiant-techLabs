@@ -72,9 +72,9 @@ export default function EmployeeForgotPasswordPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
-              <p className="text-xs text-gray-500">Please enter your official company email address (@oddiant.com)</p>
+              <p className="text-xs text-gray-500">Please enter your official company email address</p>
             </div>
-            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isSubmitting}>
+            <Button type="submit" className="w-full bg-black text-white hover:bg-green-500 hover:text-black" disabled={isSubmitting}>
               {isSubmitting ? "Sending..." : "Send Reset Instructions"}
             </Button>
           </form>
@@ -82,7 +82,7 @@ export default function EmployeeForgotPasswordPage() {
         <CardFooter className="flex justify-center">
           <p className="text-sm text-gray-600">
             Remember your password?{" "}
-            <Link href="/auth/employee/login" className="text-purple-600 hover:underline">
+            <Link href="/auth/employee/login" className="text-blue-600 hover:underline">
               Back to login
             </Link>
           </p>

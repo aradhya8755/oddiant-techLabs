@@ -172,7 +172,7 @@ export default function ResetPasswordPage() {
               {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword}</p>}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full hover:text-black hover:bg-green-500" disabled={isSubmitting}>
               {isSubmitting ? "Resetting..." : "Reset Password"}
             </Button>
           </form>
