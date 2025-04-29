@@ -112,12 +112,15 @@ export default function VerifyPage() {
 
   const handleResendOtp = async () => {
     try {
-      const response = await fetch("/api/auth/resend-otp", {
+      // Use the correct endpoint based on user type
+      const endpoint = userType === "employee" ? "/api/auth/employee/resend-otp" : "/api/auth/resend-otp"
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, userType }),
+        body: JSON.stringify({ email }),
       })
 
       const data = await response.json()
