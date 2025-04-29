@@ -1,20 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
-import { getUserFromRequest } from "@/lib/auth"
 import { uploadToCloudinary } from "@/lib/cloudinary"
 import { sendEmail } from "@/lib/email"
 
 export async function POST(req: NextRequest) {
   try {
-    // Use getUserFromRequest instead of auth()
-    const userId = await getUserFromRequest(req)
-
-    if (!userId) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 })
-    }
-
+    // Get the form data without requiring authentication
     const formData = await req.formData()
+    console.log("Received form data:", Object.fromEntries(formData.entries()))
 
     // Extract all form fields
     const firstName = formData.get("firstName") as string
@@ -38,6 +32,8 @@ export async function POST(req: NextRequest) {
     const socialMediaLinksStr = (formData.get("socialMediaLinks") as string) || ""
     const socialMediaLinks = socialMediaLinksStr ? socialMediaLinksStr.split(",").map((link) => link.trim()) : []
 
+    console.log("Processing appeal for employee ID:", employeeId)
+
     // Validate required fields
     if (
       !firstName ||
@@ -54,6 +50,7 @@ export async function POST(req: NextRequest) {
       !reason ||
       !employeeId
     ) {
+      console.log("Missing required fields")
       return NextResponse.json(
         {
           success: false,
@@ -72,6 +69,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!employee) {
+      console.log("Employee not found:", employeeId)
       return NextResponse.json(
         {
           success: false,
@@ -94,6 +92,7 @@ export async function POST(req: NextRequest) {
         })
 
         documentUrl = uploadResult.url
+        console.log("Document uploaded to Cloudinary:", documentUrl)
       } catch (uploadError) {
         console.error("Error uploading document:", uploadError)
         return NextResponse.json(
@@ -146,7 +145,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Update employee record - Fixed the update operation
+    console.log("Updating employee record with data:", updateData)
+
+    // Update employee record
     const result = await db.collection("employees").updateOne(
       { _id: new ObjectId(employeeId) },
       {
@@ -156,6 +157,7 @@ export async function POST(req: NextRequest) {
     )
 
     if (result.modifiedCount === 0) {
+      console.log("Failed to update employee record")
       return NextResponse.json(
         {
           success: false,
@@ -168,13 +170,14 @@ export async function POST(req: NextRequest) {
     // Create appeal record
     const appeal = await db.collection("appeals").insertOne({
       employeeId: new ObjectId(employeeId),
-      userId: new ObjectId(userId),
       reason,
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),
       documentUrl: documentUrl || employee.documents?.kyc?.url || null,
     })
+
+    console.log("Appeal record created:", appeal.insertedId)
 
     // Send email notification to admin
     try {
@@ -213,6 +216,7 @@ ${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/admin/verify-emplo
           </div>
         `,
       })
+      console.log("Admin notification email sent successfully")
     } catch (emailError) {
       console.error("Error sending admin notification email:", emailError)
       // Continue with the process even if email fails

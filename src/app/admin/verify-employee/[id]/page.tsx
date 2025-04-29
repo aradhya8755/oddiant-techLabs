@@ -142,7 +142,7 @@ export default function VerifyEmployeePage() {
     )
   }
 
-  // Fix for company website URL - ensure it has proper protocol
+  // Fix for website URL - ensure it has proper protocol
   const formatWebsiteUrl = (url: string) => {
     if (!url) return ""
     if (url.startsWith("http://") || url.startsWith("https://")) {
@@ -403,15 +403,6 @@ export default function VerifyEmployeePage() {
                 <XCircle className="mr-2 h-4 w-4" />
                 Reject
               </Button>
-              {/* <Button
-                variant="outline"
-                onClick={() => setIsDeleteDialogOpen(true)}
-                disabled={isProcessing}
-                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </Button> */}
             </div>
             <Button onClick={handleVerify} disabled={isProcessing} className="bg-green-600 hover:bg-green-700">
               <CheckCircle className="mr-2 h-4 w-4" />
@@ -445,3 +436,4 @@ export default function VerifyEmployeePage() {
     </div>
   )
 }
+

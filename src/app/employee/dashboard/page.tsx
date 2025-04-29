@@ -107,7 +107,10 @@ export default function EmployeeDashboard() {
             <CardDescription>Your session has expired or you are not logged in.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => router.push("/auth/employee/login")} className="w-full hover:bg-green-500 hover:text-black">
+            <Button
+              onClick={() => router.push("/auth/employee/login")}
+              className="w-full hover:bg-green-500 hover:text-black"
+            >
               Go to Login
             </Button>
           </CardContent>
@@ -662,9 +665,6 @@ export default function EmployeeDashboard() {
                     <div className="space-y-2">
                       <Label htmlFor="newPassword">New Password</Label>
                       <Input id="newPassword" type="password" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">Confirm New Password</Label>

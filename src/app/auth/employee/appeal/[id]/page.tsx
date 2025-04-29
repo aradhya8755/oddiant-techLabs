@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AlertCircle, CheckCircle, X, FileText, Search } from "lucide-react"
+import { AlertCircle, FileText, Search } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { toast, Toaster } from "sonner"
 
 interface EmployeeData {
   employee: {
@@ -45,42 +46,6 @@ interface EmployeeData {
   }
 }
 
-// Custom notification component to replace toast
-interface NotificationProps {
-  title: string
-  description: string
-  variant?: "default" | "destructive"
-  onClose: () => void
-}
-
-function Notification({ title, description, variant = "default", onClose }: NotificationProps) {
-  return (
-    <div
-      className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg flex items-start gap-3 ${
-        variant === "destructive"
-          ? "bg-red-50 border border-red-200 text-red-800"
-          : "bg-green-50 border border-green-200 text-green-800"
-      }`}
-    >
-      <div className="shrink-0 mt-0.5">
-        {variant === "destructive" ? (
-          <AlertCircle className="h-5 w-5 text-red-600" />
-        ) : (
-          <CheckCircle className="h-5 w-5 text-green-600" />
-        )}
-      </div>
-      <div className="flex-1">
-        <h3 className="font-medium text-sm">{title}</h3>
-        <p className="text-sm mt-1">{description}</p>
-      </div>
-      <button onClick={onClose} className="shrink-0">
-        <X className="h-4 w-4 opacity-70" />
-        <span className="sr-only">Close</span>
-      </button>
-    </div>
-  )
-}
-
 // List of industries for dropdown
 const industries = [
   "Information Technology",
@@ -102,6 +67,13 @@ const industries = [
 
 // List of team sizes for dropdown
 const teamSizes = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5000+"]
+
+// Document types
+const documentTypes = [
+  "GST Certificate",
+  "PAN Card",
+  "Incorporation Certificate",
+]
 
 // List of locations from India with city first, then state
 const locations = [
@@ -630,14 +602,6 @@ export default function AppealPage() {
   const [filteredLocations, setFilteredLocations] = useState<string[]>([])
   const locationDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Custom notification state
-  const [notification, setNotification] = useState<{
-    show: boolean
-    title: string
-    description: string
-    variant: "default" | "destructive"
-  } | null>(null)
-
   const [formData, setFormData] = useState({
     firstName: "",
     middleName: "",
@@ -658,21 +622,6 @@ export default function AppealPage() {
     companyLinkedin: "",
     socialMediaLinks: [] as string[],
   })
-
-  // Function to show notification (replacement for toast)
-  const showNotification = (title: string, description: string, variant: "default" | "destructive" = "default") => {
-    setNotification({
-      show: true,
-      title,
-      description,
-      variant,
-    })
-
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-      setNotification(null)
-    }, 5000)
-  }
 
   // Add these useEffect hooks for location search
   useEffect(() => {
@@ -746,7 +695,7 @@ export default function AppealPage() {
         })
       } catch (error) {
         console.error("Could not fetch employee data:", error)
-        showNotification("Error!", "Failed to fetch employee data. Please try again.", "destructive")
+        toast.error("Failed to fetch employee data. Please try again.")
       } finally {
         setIsLoading(false)
       }
@@ -755,7 +704,7 @@ export default function AppealPage() {
     fetchEmployeeData()
   }, [id])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prevState) => ({
       ...prevState,
@@ -819,23 +768,6 @@ export default function AppealPage() {
     }
   }
 
-  // Add handler for select dropdowns
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }))
-
-    // Clear validation error when field is changed
-    if (validationErrors[name]) {
-      setValidationErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[name]
-        return newErrors
-      })
-    }
-  }
-
   const validateForm = () => {
     const errors: Record<string, string> = {}
 
@@ -861,7 +793,7 @@ export default function AppealPage() {
 
     // Validate form before submission
     if (!validateForm()) {
-      showNotification("Error!", "Please fill in all required fields", "destructive")
+      toast.error("Please fill in all required fields")
       return
     }
 
@@ -875,6 +807,8 @@ export default function AppealPage() {
         if (value !== null && value !== undefined) {
           if (key === "documentFile" && value instanceof File) {
             formDataToSend.append(key, value)
+          } else if (key === "socialMediaLinks" && Array.isArray(value)) {
+            formDataToSend.append(key, value.join(","))
           } else {
             formDataToSend.append(key, value.toString())
           }
@@ -896,7 +830,7 @@ export default function AppealPage() {
         const result = await response.json()
         console.log("Appeal submission result:", result)
 
-        showNotification("Success!", "Appeal submitted successfully!")
+        toast.success("Appeal submitted successfully!")
 
         // Redirect after successful submission
         setTimeout(() => {
@@ -906,11 +840,11 @@ export default function AppealPage() {
         const errorData = await response.json()
         console.error("Error response:", errorData)
 
-        showNotification("Error!", errorData.message || "Failed to submit appeal. Please try again.", "destructive")
+        toast.error(errorData.message || "Failed to submit appeal. Please try again.")
       }
     } catch (error) {
       console.error("Error submitting appeal:", error)
-      showNotification("Error!", "An unexpected error occurred. Please try again.", "destructive")
+      toast.error("An unexpected error occurred. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -938,18 +872,10 @@ export default function AppealPage() {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      {/* Render notification if it exists */}
-      {notification && notification.show && (
-        <Notification
-          title={notification.title}
-          description={notification.description}
-          variant={notification.variant}
-          onClose={() => setNotification(null)}
-        />
-      )}
+    <div className="container mx-auto p-4 bg-white">
+      <Toaster position="top-center" />
 
-      <h1 className="text-2xl font-bold mb-4 text-white">Appeal Form</h1>
+      <h1 className="text-2xl font-bold mb-4">Appeal Form</h1>
 
       {employeeData?.employee?.rejectionReason && (
         <Alert variant="destructive" className="mb-6">
@@ -960,7 +886,7 @@ export default function AppealPage() {
               <strong>Reason:</strong> {employeeData.employee.rejectionReason}
             </p>
             {employeeData.employee.rejectionComments && (
-              <p className="mt-2 text-white">
+              <p className="mt-2">
                 <strong>Comments:</strong> {employeeData.employee.rejectionComments}
               </p>
             )}
@@ -971,9 +897,9 @@ export default function AppealPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Personal Information */}
         <div>
-          <h3 className="text-lg font-medium mb-4 text-white">Personal Information</h3>
+          <h3 className="text-lg font-medium mb-4">Personal Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
               <Input
                 id="firstName"
@@ -986,7 +912,7 @@ export default function AppealPage() {
               />
               {validationErrors.firstName && <p className="text-red-500 text-xs mt-1">{validationErrors.firstName}</p>}
             </div>
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="middleName">Middle Name</Label>
               <Input
                 id="middleName"
@@ -996,7 +922,7 @@ export default function AppealPage() {
                 placeholder="Middle Name"
               />
             </div>
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
               <Input
                 id="lastName"
@@ -1011,7 +937,7 @@ export default function AppealPage() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -1025,7 +951,7 @@ export default function AppealPage() {
               />
               {validationErrors.email && <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>}
             </div>
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
               <Input
                 id="phone"
@@ -1040,7 +966,7 @@ export default function AppealPage() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="designation">Designation</Label>
               <Input
                 id="designation"
@@ -1055,7 +981,7 @@ export default function AppealPage() {
                 <p className="text-red-500 text-xs mt-1">{validationErrors.designation}</p>
               )}
             </div>
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="linkedinProfile">LinkedIn Profile</Label>
               <Input
                 id="linkedinProfile"
@@ -1072,9 +998,9 @@ export default function AppealPage() {
 
         {/* Company Information */}
         <div>
-          <h3 className="text-lg font-medium mb-4 text-white">Company Information</h3>
+          <h3 className="text-lg font-medium mb-4">Company Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="companyName">Company Name</Label>
               <Input
                 id="companyName"
@@ -1089,7 +1015,7 @@ export default function AppealPage() {
                 <p className="text-red-500 text-xs mt-1">{validationErrors.companyName}</p>
               )}
             </div>
-            <div className="space-y-2 text-white relative">
+            <div className="space-y-2 relative">
               <Label htmlFor="companyLocation">Company Location</Label>
               <div className="relative">
                 <Input
@@ -1116,7 +1042,7 @@ export default function AppealPage() {
                   {filteredLocations.map((location, index) => (
                     <div
                       key={index}
-                      className="px-4 py-2 hover:bg-purple-50 cursor-pointer text-black"
+                      className="px-4 py-2 hover:bg-purple-50 cursor-pointer"
                       onClick={() => handleLocationSelect(location)}
                     >
                       {location}
@@ -1130,14 +1056,14 @@ export default function AppealPage() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="companyIndustry">Company Industry</Label>
               <select
                 id="companyIndustry"
                 name="companyIndustry"
                 value={formData.companyIndustry}
-                onChange={(e) => handleInputChange(e)}
-                className={`w-full h-10 px-3 py-2 rounded-md border border-input bg-background text-black ${
+                onChange={handleInputChange}
+                className={`w-full h-10 px-3 py-2 rounded-md border border-input bg-background ${
                   validationErrors.companyIndustry ? "border-red-500" : ""
                 }`}
                 required
@@ -1153,14 +1079,14 @@ export default function AppealPage() {
                 <p className="text-red-500 text-xs mt-1">{validationErrors.companyIndustry}</p>
               )}
             </div>
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="teamSize">Team Size</Label>
               <select
                 id="teamSize"
                 name="teamSize"
                 value={formData.teamSize}
-                onChange={(e) => handleInputChange(e)}
-                className={`w-full h-10 px-3 py-2 rounded-md border border-input bg-background text-black ${
+                onChange={handleInputChange}
+                className={`w-full h-10 px-3 py-2 rounded-md border border-input bg-background ${
                   validationErrors.teamSize ? "border-red-500" : ""
                 }`}
                 required
@@ -1177,7 +1103,7 @@ export default function AppealPage() {
           </div>
 
           {/* Add Company Website */}
-          <div className="space-y-2 mt-4 text-white">
+          <div className="space-y-2 mt-4">
             <Label htmlFor="companyWebsite">Company Website</Label>
             <Input
               id="companyWebsite"
@@ -1189,7 +1115,7 @@ export default function AppealPage() {
           </div>
 
           {/* Add Company LinkedIn */}
-          <div className="space-y-2 mt-4 text-white">
+          <div className="space-y-2 mt-4">
             <Label htmlFor="companyLinkedin">Company LinkedIn</Label>
             <Input
               id="companyLinkedin"
@@ -1201,7 +1127,7 @@ export default function AppealPage() {
           </div>
 
           {/* Add Social Media Links */}
-          <div className="space-y-2 mt-4 text-white">
+          <div className="space-y-2 mt-4">
             <Label htmlFor="socialMediaLinks">Social Media Links</Label>
             <Input
               id="socialMediaLinks"
@@ -1224,34 +1150,34 @@ export default function AppealPage() {
 
         {/* Document Information */}
         <div>
-          <h3 className="text-lg font-medium mb-4 text-white">Update KYC Documents</h3>
+          <h3 className="text-lg font-medium mb-4">Update KYC Documents</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="documentType">Document Type</Label>
               <select
                 id="documentType"
                 name="documentType"
                 value={formData.documentType}
                 onChange={handleInputChange}
-                className={`w-full h-10 px-3 py-2 rounded-md border border-input bg-background text-black ${
+                className={`w-full h-10 px-3 py-2 rounded-md border border-input bg-background ${
                   validationErrors.documentType ? "border-red-500" : ""
                 }`}
                 required
               >
                 <option value="">Select document type</option>
-                <option value="Passport">Passport</option>
-                <option value="Driving License">Driving License</option>
-                <option value="National ID">National ID</option>
-                <option value="Voter ID">Voter ID</option>
-                <option value="Other">Other</option>
+                {documentTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
               </select>
               {validationErrors.documentType && (
                 <p className="text-red-500 text-xs mt-1">{validationErrors.documentType}</p>
               )}
             </div>
 
-            <div className="space-y-2 text-white">
+            <div className="space-y-2">
               <Label htmlFor="documentNumber">Document Number</Label>
               <Input
                 id="documentNumber"
@@ -1268,7 +1194,7 @@ export default function AppealPage() {
             </div>
           </div>
 
-          <div className="space-y-2 mt-4 text-white">
+          <div className="space-y-2 mt-4">
             <Label htmlFor="documentFile">Upload Document</Label>
             {/* Display previously uploaded document if available */}
             {employeeData?.employee?.documents?.kyc?.url && (
@@ -1292,7 +1218,7 @@ export default function AppealPage() {
                 name="documentFile"
                 onChange={handleFileChange}
                 accept=".pdf,.jpeg,.png,.jpg"
-                className="block w-full text-white file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                className="block w-full file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700"
               />
             </div>
             {formData.documentFile && (
@@ -1304,7 +1230,7 @@ export default function AppealPage() {
         <Separator />
 
         {/* Reason for Appeal */}
-        <div className="space-y-2 text-white">
+        <div className="space-y-2">
           <Label htmlFor="reason">Reason for Appeal</Label>
           <Textarea
             id="reason"
@@ -1312,7 +1238,7 @@ export default function AppealPage() {
             value={formData.reason}
             onChange={handleInputChange}
             placeholder="Please explain why you are appealing the rejection and what changes you have made to address the concerns."
-            className={`resize-none text-black ${validationErrors.reason ? "border-red-500" : ""}`}
+            className={`resize-none ${validationErrors.reason ? "border-red-500" : ""}`}
             rows={5}
             required
           />
@@ -1322,7 +1248,7 @@ export default function AppealPage() {
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full md:w-auto bg-gray-500 text-white hover:bg-green-500 hover:text-black"
+          className="w-full md:w-auto bg-black text-white hover:bg-green-500 hover:text-black"
         >
           {isSubmitting ? "Submitting..." : "Submit Appeal"}
         </Button>

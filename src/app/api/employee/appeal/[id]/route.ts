@@ -11,7 +11,7 @@ interface Context {
 export async function GET(request: NextRequest, context: Context) {
   try {
     // Get the ID from params
-    const { id } =await context.params
+    const { id } = await context.params
 
     if (!id) {
       return NextResponse.json({ success: false, message: "Employee ID is required" }, { status: 400 })

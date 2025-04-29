@@ -24,12 +24,12 @@ export default function EmployeeLoginPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch("/api/auth/employee/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, userType: "employee" }),
       })
 
       const data = await response.json()
@@ -39,7 +39,15 @@ export default function EmployeeLoginPage() {
       }
 
       toast.success("Login successful")
-      router.push("/dashboard/employee")
+
+      // Use the redirectUrl from the response if available
+      if (data.redirectUrl) {
+        router.push(data.redirectUrl)
+      } else if (data.role === "admin") {
+        router.push("/admin/employees")
+      } else {
+        router.push("/employee/dashboard")
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed")
     } finally {
@@ -100,14 +108,18 @@ export default function EmployeeLoginPage() {
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full bg-black text-white hover:bg-green-500 hover:text-black" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="w-full bg-black text-white hover:bg-green-500 hover:text-black"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? "Logging in..." : "Login"}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-gray-600">
-          Don't have an account? {" "}
+            Don't have an account?{" "}
             <Link href="/auth/employee/register" className="text-blue-600 hover:underline">
               Sign up
             </Link>
