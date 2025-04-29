@@ -22,12 +22,12 @@ export default function EmployeeForgotPasswordPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch("/api/auth/forgot-password", {
+      const response = await fetch("/api/auth/employee/forgot-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, userType: "employee" }),
+        body: JSON.stringify({ email }),
       })
 
       const data = await response.json()
@@ -37,7 +37,7 @@ export default function EmployeeForgotPasswordPage() {
       }
 
       toast.success("Password reset instructions sent to your email")
-      router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&userType=employee`)
+      router.push(`/auth/employee/reset-password?email=${encodeURIComponent(email)}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to process request")
     } finally {

@@ -6,7 +6,7 @@ import { sendEmail } from "@/lib/email"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, userType = "student" } = body
+    const { email } = body
 
     if (!email) {
       return NextResponse.json({ success: false, message: "Email is required" }, { status: 400 })
@@ -15,13 +15,10 @@ export async function POST(request: NextRequest) {
     // Connect to database
     const { db } = await connectToDatabase()
 
-    // Determine collection based on user type
-    const collection = userType === "employee" ? "employees" : "students"
+    // Find employee by email
+    const employee = await db.collection("employees").findOne({ email })
 
-    // Find user by email
-    const user = await db.collection(collection).findOne({ email })
-
-    if (!user) {
+    if (!employee) {
       return NextResponse.json({ success: false, message: "Email not found" }, { status: 404 })
     }
 
@@ -30,8 +27,8 @@ export async function POST(request: NextRequest) {
     const resetTokenExpiry = new Date()
     resetTokenExpiry.setMinutes(resetTokenExpiry.getMinutes() + 15) // Token valid for 15 minutes
 
-    // Update user with reset token
-    await db.collection(collection).updateOne(
+    // Update employee with reset token
+    await db.collection("employees").updateOne(
       { email },
       {
         $set: {
@@ -45,13 +42,13 @@ export async function POST(request: NextRequest) {
     // Send password reset email
     await sendEmail({
       to: email,
-      subject: "Password Reset - Oddiant Techlabs",
+      subject: "Password Reset - Oddiant Techlabs Employee Portal",
       text: `Your password reset code is: ${resetToken}. This code will expire in 15 minutes.`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
           <h2 style="color: #333;">Password Reset</h2>
-          <p>Hello,</p>
-          <p>You requested a password reset for your Oddiant Techlabs account. Please use the following code to reset your password:</p>
+          <p>Hello ${employee.firstName || ""},</p>
+          <p>You requested a password reset for your Oddiant Techlabs Employee account. Please use the following code to reset your password:</p>
           <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
             ${resetToken}
           </div>
@@ -67,7 +64,7 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     )
   } catch (error) {
-    console.error("Error in forgot password:", error)
+    console.error("Error in employee forgot password:", error)
     return NextResponse.json(
       { success: false, message: "Failed to process request. Please try again." },
       { status: 500 },
