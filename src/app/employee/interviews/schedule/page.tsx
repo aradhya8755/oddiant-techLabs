@@ -6,42 +6,41 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Calendar, Clock } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { toast, Toaster } from "sonner"
+import { EmployeeNavbar } from "@/components/layout/employee-navbar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
 interface Candidate {
-  _id: string
+  id: string
   name: string
   role: string
 }
 
-interface JobPosting {
-  _id: string
-  jobTitle: string
+interface Job {
+  id: string
+  title: string
 }
 
 export default function ScheduleInterviewPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const candidateIdParam = searchParams.get("candidateId")
-
+  const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [candidates, setCandidates] = useState<Candidate[]>([])
-  const [jobs, setJobs] = useState<JobPosting[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
+  const [jobs, setJobs] = useState<Job[]>([])
   const [formData, setFormData] = useState({
     candidateId: candidateIdParam || "",
-    candidate: "",
     jobId: "",
     position: "",
     date: "",
     time: "",
     duration: "60",
     interviewers: "",
+    meetingLink: "",
     notes: "",
   })
 
@@ -57,6 +56,15 @@ export default function ScheduleInterviewPage() {
         }
         const candidatesData = await candidatesResponse.json()
 
+        // Format candidates for the dropdown
+        const formattedCandidates = candidatesData.candidates.map((candidate: any) => ({
+          id: candidate._id,
+          name: candidate.name,
+          role: candidate.role || "",
+        }))
+
+        setCandidates(formattedCandidates)
+
         // Fetch jobs
         const jobsResponse = await fetch("/api/employee/jobs")
         if (!jobsResponse.ok) {
@@ -64,18 +72,22 @@ export default function ScheduleInterviewPage() {
         }
         const jobsData = await jobsResponse.json()
 
-        setCandidates(candidatesData.candidates || [])
-        setJobs(jobsData.jobs || [])
+        // Format jobs for the dropdown
+        const formattedJobs = jobsData.jobs.map((job: any) => ({
+          id: job._id,
+          title: job.jobTitle,
+        }))
 
-        // If candidateId is provided in URL, set the candidate name and position
+        setJobs(formattedJobs)
+
+        // Set preselected candidate if provided
         if (candidateIdParam) {
-          const selectedCandidate = candidatesData.candidates.find((c: any) => c._id === candidateIdParam)
-          if (selectedCandidate) {
+          const candidate = formattedCandidates.find((c) => c.id === candidateIdParam)
+          if (candidate) {
             setFormData((prev) => ({
               ...prev,
               candidateId: candidateIdParam,
-              candidate: selectedCandidate.name,
-              position: selectedCandidate.role,
+              position: candidate.role || "",
             }))
           }
         }
@@ -97,69 +109,58 @@ export default function ScheduleInterviewPage() {
 
   const handleCandidateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const candidateId = e.target.value
-    setFormData((prev) => ({ ...prev, candidateId }))
+    const candidate = candidates.find((c) => c.id === candidateId)
 
-    // Update candidate name and position
-    const selectedCandidate = candidates.find((c) => c._id === candidateId)
-    if (selectedCandidate) {
-      setFormData((prev) => ({
-        ...prev,
-        candidate: selectedCandidate.name,
-        position: selectedCandidate.role,
-      }))
-    }
+    setFormData((prev) => ({
+      ...prev,
+      candidateId,
+      position: candidate?.role || prev.position,
+    }))
   }
 
   const handleJobChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const jobId = e.target.value
-    setFormData((prev) => ({ ...prev, jobId }))
+    const job = jobs.find((j) => j.id === jobId)
 
-    // Update position if job is selected
-    const selectedJob = jobs.find((j) => j._id === jobId)
-    if (selectedJob) {
-      setFormData((prev) => ({ ...prev, position: selectedJob.jobTitle }))
-    }
+    setFormData((prev) => ({
+      ...prev,
+      jobId,
+      position: job?.title || prev.position,
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validate form
-    if (!formData.candidate || !formData.position || !formData.date || !formData.time) {
+    if (!formData.candidateId || !formData.position || !formData.date || !formData.time) {
       toast.error("Please fill in all required fields")
       return
     }
 
+    setIsSubmitting(true)
+
     try {
-      setIsSubmitting(true)
-
-      // Format interviewers as an array
-      const interviewersArray = formData.interviewers ? formData.interviewers.split(",").map((item) => item.trim()) : []
-
-      const interviewData = {
-        ...formData,
-        interviewers: interviewersArray,
-      }
-
       const response = await fetch("/api/employee/interviews", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(interviewData),
+        body: JSON.stringify({
+          ...formData,
+          interviewers: formData.interviewers
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+        }),
       })
 
       if (!response.ok) {
         throw new Error("Failed to schedule interview")
       }
 
-      toast.success("Interview scheduled successfully!")
-
-      // Navigate back to the dashboard after successful submission
-      setTimeout(() => {
-        router.push("/employee/dashboard?tab=interviews")
-        router.refresh()
-      }, 1500)
+      toast.success("Interview scheduled successfully")
+      router.push("/employee/dashboard?tab=interviews")
+      router.refresh()
     } catch (error) {
       console.error("Error scheduling interview:", error)
       toast.error("Failed to schedule interview")
@@ -168,22 +169,12 @@ export default function ScheduleInterviewPage() {
     }
   }
 
-  // Set minimum date to today
-  const today = new Date().toISOString().split("T")[0]
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <Toaster position="top-center" />
+      <EmployeeNavbar />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Button variant="ghost" className="mb-6" onClick={() => router.back()} disabled={isSubmitting}>
+        <Button variant="ghost" className="mb-6" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
         </Button>
@@ -194,8 +185,12 @@ export default function ScheduleInterviewPage() {
             <CardDescription>Fill in the details to schedule a new interview</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-4">
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="candidateId">Select Candidate*</Label>
@@ -210,7 +205,7 @@ export default function ScheduleInterviewPage() {
                       <option value="">Select a candidate</option>
                       {candidates.length > 0 ? (
                         candidates.map((candidate) => (
-                          <option key={candidate._id} value={candidate._id}>
+                          <option key={candidate.id} value={candidate.id}>
                             {candidate.name} - {candidate.role}
                           </option>
                         ))
@@ -234,8 +229,8 @@ export default function ScheduleInterviewPage() {
                       <option value="">Select a job</option>
                       {jobs.length > 0 ? (
                         jobs.map((job) => (
-                          <option key={job._id} value={job._id}>
-                            {job.jobTitle}
+                          <option key={job.id} value={job.id}>
+                            {job.title}
                           </option>
                         ))
                       ) : (
@@ -273,35 +268,12 @@ export default function ScheduleInterviewPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="date">Date*</Label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                      <Input
-                        id="date"
-                        name="date"
-                        type="date"
-                        value={formData.date}
-                        onChange={handleChange}
-                        min={today}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
+                    <Input id="date" name="date" type="date" value={formData.date} onChange={handleChange} required />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="time">Time*</Label>
-                    <div className="relative">
-                      <Clock className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                      <Input
-                        id="time"
-                        name="time"
-                        type="time"
-                        value={formData.time}
-                        onChange={handleChange}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
+                    <Input id="time" name="time" type="time" value={formData.time} onChange={handleChange} required />
                   </div>
 
                   <div className="space-y-2">
@@ -323,6 +295,18 @@ export default function ScheduleInterviewPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="meetingLink">Meeting Link (Google Meet/Zoom)</Label>
+                  <Input
+                    id="meetingLink"
+                    name="meetingLink"
+                    type="url"
+                    value={formData.meetingLink}
+                    onChange={handleChange}
+                    placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea
                     id="notes"
@@ -333,24 +317,24 @@ export default function ScheduleInterviewPage() {
                     rows={3}
                   />
                 </div>
-              </div>
 
-              <div className="flex justify-end space-x-3">
-                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-t-transparent border-white rounded-full"></div>
-                      Scheduling...
-                    </>
-                  ) : (
-                    "Schedule Interview"
-                  )}
-                </Button>
-              </div>
-            </form>
+                <div className="flex justify-end space-x-3">
+                  <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin mr-2 h-4 w-4 border-2 border-t-transparent border-white rounded-full"></div>
+                        Scheduling...
+                      </>
+                    ) : (
+                      "Schedule Interview"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>

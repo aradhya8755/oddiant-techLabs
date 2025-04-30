@@ -61,13 +61,12 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
     if (!candidate) return
 
     try {
-      const response = await fetch(`/api/employee/candidates/${candidateId}`, {
+      const response = await fetch(`/api/employee/candidates/${candidateId}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...candidate,
           status: newStatus,
         }),
       })
@@ -176,14 +175,14 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
                       <Calendar className="h-4 w-4 mr-2" />
                       Schedule Interview
                     </Button>
-                    <Button
+                    {/* <Button
                       variant="outline"
                       className="w-full justify-start"
                       onClick={() => router.push(`/employee/candidates/${candidateId}/edit`)}
                     >
                       <FileText className="h-4 w-4 mr-2" />
                       Edit Profile
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               </CardContent>
@@ -289,7 +288,18 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
                     <div>
                       <h3 className="text-lg font-medium mb-2">Resume</h3>
                       <Button variant="outline" className="text-blue-600 dark:text-blue-400" asChild>
-                        <a href={candidate.resume} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={candidate.resume}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => {
+                            // Prevent default if resume URL doesn't look like a valid URL
+                            if (!candidate.resume.startsWith("http")) {
+                              e.preventDefault()
+                              toast.error("Resume not available or invalid URL format")
+                            }
+                          }}
+                        >
                           <FileText className="h-4 w-4 mr-2" />
                           View Resume
                         </a>

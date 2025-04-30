@@ -1,0 +1,154 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { connectToDatabase } from "@/lib/mongodb"
+import { ObjectId } from "mongodb"
+import { sendEmail } from "@/lib/email"
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { fullName, email, phone, linkedIn, resumeUrl, coverLetter, additionalInfo, jobId } = body
+
+    if (!fullName || !email || !resumeUrl || !jobId) {
+      return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 })
+    }
+
+    // Connect to database
+    const { db } = await connectToDatabase()
+
+    // Find the job
+    const job = await db.collection("jobs").findOne({ _id: new ObjectId(jobId) })
+
+    if (!job) {
+      return NextResponse.json({ success: false, message: "Job not found" }, { status: 404 })
+    }
+
+    // Check if user already exists
+    let userId = null
+    const existingUser = await db.collection("users").findOne({ email })
+
+    if (existingUser) {
+      userId = existingUser._id
+    }
+
+    // Create candidate record
+    const candidate = {
+      name: fullName,
+      email,
+      phone: phone || "",
+      linkedIn: linkedIn || "",
+      resumeUrl,
+      status: "applied",
+      role: job.jobTitle,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      userId: userId ? new ObjectId(userId) : null,
+    }
+
+    const candidateResult = await db.collection("candidates").insertOne(candidate)
+    const candidateId = candidateResult.insertedId
+
+    // Create job application record
+    const application = {
+      jobId: new ObjectId(jobId),
+      candidateId: candidateId,
+      coverLetter: coverLetter || "",
+      additionalInfo: additionalInfo || "",
+      status: "applied",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    await db.collection("job_applications").insertOne(application)
+
+    // Store the application ID in a temporary collection for linking during registration
+    await db.collection("pending_applications").insertOne({
+      email,
+      candidateId,
+      jobId: new ObjectId(jobId),
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days expiry
+    })
+
+    // Send confirmation email
+    try {
+      await sendEmail({
+        to: email,
+        subject: `Application Received: ${job.jobTitle} at ${job.companyName}`,
+        text: `
+          Dear ${fullName},
+
+          Thank you for applying for the ${job.jobTitle} position at ${job.companyName}.
+
+          We have received your application and will review it shortly. If your qualifications match our requirements, we will contact you for the next steps.
+
+          Best regards,
+          ${job.companyName} Recruitment Team
+        `,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+            <h2 style="color: #333;">Application Received</h2>
+            <p>Dear ${fullName},</p>
+            <p>Thank you for applying for the <strong>${job.jobTitle}</strong> position at <strong>${job.companyName}</strong>.</p>
+            <p>We have received your application and will review it shortly. If your qualifications match our requirements, we will contact you for the next steps.</p>
+            <p>Best regards,<br>${job.companyName} Recruitment Team</p>
+          </div>
+        `,
+      })
+    } catch (emailError) {
+      console.error("Error sending confirmation email:", emailError)
+      // Continue with the process even if email fails
+    }
+
+    // Send notification to employer
+    try {
+      const employer = await db.collection("employees").findOne({ _id: job.createdBy })
+      if (employer) {
+        await sendEmail({
+          to: employer.email,
+          subject: `New Application: ${job.jobTitle}`,
+          text: `
+            Hello ${employer.firstName},
+
+            A new application has been received for the ${job.jobTitle} position.
+
+            Candidate: ${fullName}
+            Email: ${email}
+            
+            You can review this application in your dashboard.
+
+            Best regards,
+            Recruitment System
+          `,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+              <h2 style="color: #333;">New Application Received</h2>
+              <p>Hello ${employer.firstName},</p>
+              <p>A new application has been received for the <strong>${job.jobTitle}</strong> position.</p>
+              <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <p><strong>Candidate:</strong> ${fullName}</p>
+                <p><strong>Email:</strong> ${email}</p>
+              </div>
+              <p>You can review this application in your dashboard.</p>
+              <p>Best regards,<br>Recruitment System</p>
+            </div>
+          `,
+        })
+      }
+    } catch (emailError) {
+      console.error("Error sending employer notification:", emailError)
+      // Continue with the process even if email fails
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Application submitted successfully",
+        candidateId: candidateId.toString(),
+      },
+      { status: 201 },
+    )
+  } catch (error) {
+    console.error("Error submitting application:", error)
+    return NextResponse.json({ success: false, message: "Failed to submit application" }, { status: 500 })
+  }
+}
