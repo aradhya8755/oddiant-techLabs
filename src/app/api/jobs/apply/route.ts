@@ -8,8 +8,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { fullName, email, phone, linkedIn, resumeUrl, coverLetter, additionalInfo, jobId } = body
 
+    console.log("Application submission data received:", {
+      fullName,
+      email,
+      resumeUrl: resumeUrl ? "URL provided" : "Missing",
+      jobId,
+    })
+
     if (!fullName || !email || !resumeUrl || !jobId) {
-      return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Missing required fields: ${!fullName ? "fullName, " : ""}${!email ? "email, " : ""}${!resumeUrl ? "resumeUrl, " : ""}${!jobId ? "jobId" : ""}`,
+        },
+        { status: 400 },
+      )
     }
 
     // Connect to database
@@ -30,15 +43,23 @@ export async function POST(request: NextRequest) {
       userId = existingUser._id
     }
 
-    // Create candidate record
+    // Create candidate record with all fields
     const candidate = {
       name: fullName,
       email,
       phone: phone || "",
       linkedIn: linkedIn || "",
       resumeUrl,
-      status: "applied",
+      coverLetter: coverLetter || "",
+      additionalInfo: additionalInfo || "",
+      status: "Applied",
       role: job.jobTitle,
+      location: job.jobLocation || "",
+      experience: job.experienceRange || "",
+      education: "",
+      skills: job.skills || [],
+      notes: "",
+      appliedDate: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
       userId: userId ? new ObjectId(userId) : null,
@@ -47,18 +68,22 @@ export async function POST(request: NextRequest) {
     const candidateResult = await db.collection("candidates").insertOne(candidate)
     const candidateId = candidateResult.insertedId
 
+    console.log("Candidate created with ID:", candidateId.toString())
+
     // Create job application record
     const application = {
       jobId: new ObjectId(jobId),
       candidateId: candidateId,
       coverLetter: coverLetter || "",
       additionalInfo: additionalInfo || "",
-      status: "applied",
+      status: "Applied",
+      appliedDate: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
     }
 
-    await db.collection("job_applications").insertOne(application)
+    const applicationResult = await db.collection("job_applications").insertOne(application)
+    console.log("Job application created with ID:", applicationResult.insertedId.toString())
 
     // Store the application ID in a temporary collection for linking during registration
     await db.collection("pending_applications").insertOne({
@@ -147,8 +172,14 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 },
     )
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error submitting application:", error)
-    return NextResponse.json({ success: false, message: "Failed to submit application" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        message: `Failed to submit application: ${error.message || "Unknown error"}`,
+      },
+      { status: 500 },
+    )
   }
 }

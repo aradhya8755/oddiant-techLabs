@@ -21,10 +21,31 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const candidate = await db.collection("candidates").findOne({ _id: new ObjectId(candidateId) })
 
     if (!candidate) {
-      return NextResponse.json({ message: "Candidate not found" }, { status: 404 })
+      return NextResponse.json({ success: false, message: "Candidate not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, candidate }, { status: 200 })
+    // Format the response to ensure all fields are included
+    const formattedCandidate = {
+      ...candidate,
+      _id: candidate._id.toString(),
+      // Ensure these fields are always present in the response
+      name: candidate.name || "",
+      email: candidate.email || "",
+      phone: candidate.phone || "",
+      role: candidate.role || "",
+      status: candidate.status || "Applied",
+      location: candidate.location || "",
+      experience: candidate.experience || "",
+      education: candidate.education || "",
+      skills: candidate.skills || [],
+      notes: candidate.notes || "",
+      resumeUrl: candidate.resumeUrl || "",
+      appliedDate: candidate.appliedDate || candidate.createdAt || new Date(),
+      createdAt: candidate.createdAt || new Date(),
+      updatedAt: candidate.updatedAt || new Date(),
+    }
+
+    return NextResponse.json({ success: true, candidate: formattedCandidate }, { status: 200 })
   } catch (error) {
     console.error("Error fetching candidate:", error)
     return NextResponse.json({ success: false, message: "Failed to fetch candidate" }, { status: 500 })
@@ -58,7 +79,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     )
 
     if (result.matchedCount === 0) {
-      return NextResponse.json({ message: "Candidate not found" }, { status: 404 })
+      return NextResponse.json({ success: false, message: "Candidate not found" }, { status: 404 })
     }
 
     return NextResponse.json({ success: true, message: "Candidate updated successfully" }, { status: 200 })
@@ -86,8 +107,13 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const result = await db.collection("candidates").deleteOne({ _id: new ObjectId(candidateId) })
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ message: "Candidate not found" }, { status: 404 })
+      return NextResponse.json({ success: false, message: "Candidate not found" }, { status: 404 })
     }
+
+    // Delete related records
+    await db.collection("job_applications").deleteMany({ candidateId: new ObjectId(candidateId) })
+    await db.collection("interviews").deleteMany({ candidateId: new ObjectId(candidateId) })
+    await db.collection("candidate_comments").deleteMany({ candidateId: new ObjectId(candidateId) })
 
     return NextResponse.json({ success: true, message: "Candidate deleted successfully" }, { status: 200 })
   } catch (error) {
@@ -95,4 +121,3 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     return NextResponse.json({ success: false, message: "Failed to delete candidate" }, { status: 500 })
   }
 }
- 

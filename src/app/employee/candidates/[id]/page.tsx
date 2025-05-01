@@ -9,7 +9,16 @@ import { toast, Toaster } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
+import { EmployeeNavbar } from "@/components/layout/employee-navbar"
 import { use } from "react"
+
+interface Interview {
+  _id: string
+  position: string
+  date: string
+  time: string
+  status: string
+}
 
 interface Candidate {
   _id: string
@@ -23,16 +32,21 @@ interface Candidate {
   education: string
   skills: string[]
   notes: string
-  resume: string
+  resumeUrl: string
   appliedDate: string
+  createdAt: string
+  updatedAt: string
   avatar?: string
 }
 
-export default function CandidateDetailsPage({ params }: { params: { id: string } }) {
+export default function CandidateDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
   const router = useRouter()
-  const candidateId = use(params).id
+  const candidateId = resolvedParams.id
   const [candidate, setCandidate] = useState<Candidate | null>(null)
+  const [interviews, setInterviews] = useState<Interview[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingInterviews, setIsLoadingInterviews] = useState(true)
 
   useEffect(() => {
     const fetchCandidate = async () => {
@@ -45,6 +59,7 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
         }
 
         const data = await response.json()
+        console.log("Candidate data:", data.candidate) // Debug log
         setCandidate(data.candidate)
       } catch (error) {
         console.error("Error fetching candidate:", error)
@@ -54,7 +69,28 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
       }
     }
 
+    const fetchInterviews = async () => {
+      try {
+        setIsLoadingInterviews(true)
+        const response = await fetch(`/api/employee/candidates/${candidateId}/interviews`)
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch interviews")
+        }
+
+        const data = await response.json()
+        console.log("Interviews data:", data.interviews) // Debug log
+        setInterviews(data.interviews || [])
+      } catch (error) {
+        console.error("Error fetching interviews:", error)
+        // Don't show toast for this, just log the error
+      } finally {
+        setIsLoadingInterviews(false)
+      }
+    }
+
     fetchCandidate()
+    fetchInterviews()
   }, [candidateId])
 
   const handleStatusChange = async (newStatus: string) => {
@@ -104,6 +140,18 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
     }
   }
 
+  const formatDate = (dateString: string | Date) => {
+    if (!dateString) return "Not available"
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return "Not available"
+      return date.toLocaleDateString()
+    } catch (e) {
+      console.error("Date formatting error:", e)
+      return "Not available"
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -115,6 +163,7 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
   if (!candidate) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+        <EmployeeNavbar />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <Button variant="ghost" className="mb-6" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -139,6 +188,7 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <Toaster position="top-center" />
+      <EmployeeNavbar />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <Button variant="ghost" className="mb-6" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -175,14 +225,6 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
                       <Calendar className="h-4 w-4 mr-2" />
                       Schedule Interview
                     </Button>
-                    {/* <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={() => router.push(`/employee/candidates/${candidateId}/edit`)}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Edit Profile
-                    </Button> */}
                   </div>
                 </div>
               </CardContent>
@@ -262,7 +304,7 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
                     )}
                     <div>
                       <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Applied Date</p>
-                      <p>{new Date(candidate.appliedDate).toLocaleDateString()}</p>
+                      <p>{formatDate(candidate.appliedDate || candidate.createdAt)}</p>
                     </div>
                   </div>
                 </div>
@@ -282,24 +324,13 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
                   </div>
                 )}
 
-                {candidate.resume && (
+                {candidate.resumeUrl && (
                   <>
                     <Separator />
                     <div>
                       <h3 className="text-lg font-medium mb-2">Resume</h3>
                       <Button variant="outline" className="text-blue-600 dark:text-blue-400" asChild>
-                        <a
-                          href={candidate.resume}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => {
-                            // Prevent default if resume URL doesn't look like a valid URL
-                            if (!candidate.resume.startsWith("http")) {
-                              e.preventDefault()
-                              toast.error("Resume not available or invalid URL format")
-                            }
-                          }}
-                        >
+                        <a href={candidate.resumeUrl} target="_blank" rel="noopener noreferrer">
                           <FileText className="h-4 w-4 mr-2" />
                           View Resume
                         </a>
@@ -325,13 +356,57 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
                 <CardTitle>Interview History</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">No interviews scheduled yet</p>
-                  <Button onClick={() => router.push(`/employee/interviews/schedule?candidateId=${candidateId}`)}>
-                    Schedule Interview
-                  </Button>
-                </div>
+                {isLoadingInterviews ? (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
+                  </div>
+                ) : interviews.length > 0 ? (
+                  <div className="space-y-4">
+                    {interviews.map((interview) => (
+                      <div
+                        key={interview._id}
+                        className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border rounded-md dark:border-gray-700"
+                      >
+                        <div className="mb-2 md:mb-0">
+                          <p className="font-medium">{interview.position}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(interview.date)} at {interview.time}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge
+                            className={
+                              interview.status === "scheduled"
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                                : interview.status === "completed"
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                                  : interview.status === "cancelled"
+                                    ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                    : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
+                            }
+                          >
+                            {interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push(`/employee/interviews/${interview._id}`)}
+                          >
+                            View Details
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 dark:text-gray-400 mb-4">No interviews scheduled yet</p>
+                    <Button onClick={() => router.push(`/employee/interviews/schedule?candidateId=${candidateId}`)}>
+                      Schedule Interview
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

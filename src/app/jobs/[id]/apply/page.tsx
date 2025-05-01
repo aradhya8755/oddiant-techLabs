@@ -2,20 +2,21 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Upload, Briefcase } from "lucide-react"
+import { ArrowLeft, Briefcase } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { use } from "react"
 
-export default function JobApplicationPage({ params }: { params: { id: string } }) {
+export default function JobApplicationPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
   const router = useRouter()
-  const jobId = use(params).id
+  const jobId = resolvedParams.id
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [job, setJob] = useState<any>(null)
@@ -30,11 +31,14 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
     additionalInfo: "",
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadedResumeUrl, setUploadedResumeUrl] = useState<string>("")
+  const [isUploading, setIsUploading] = useState(false)
 
   // Fetch job details
-  useState(() => {
+  useEffect(() => {
     const fetchJob = async () => {
       try {
+        setIsLoading(true)
         const response = await fetch(`/api/jobs/${jobId}`)
         if (response.ok) {
           const data = await response.json()
@@ -48,7 +52,7 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
     }
 
     fetchJob()
-  })
+  }, [jobId])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -58,10 +62,13 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0])
+      // Reset the uploaded URL when a new file is selected
+      setUploadedResumeUrl("")
     }
   }
 
-  const uploadResume = async (file: File) => {
+  const uploadResume = async (file: File): Promise<string> => {
+    setIsUploading(true)
     try {
       const formData = new FormData()
       formData.append("file", file)
@@ -72,38 +79,79 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error("Upload error response:", errorText)
-        throw new Error("Failed to upload resume")
+        const errorData = await response.text()
+        console.error("Upload error response:", errorData)
+        throw new Error(`Failed to upload resume: ${errorData}`)
       }
 
       const data = await response.json()
+      console.log("Upload response data:", data) // Debug log
+
+      // Check if the response contains the expected URL
+      if (!data.success || !data.url) {
+        console.error("Invalid upload response:", data)
+        throw new Error(data.message || "No URL returned from upload")
+      }
+
       return data.url
     } catch (error) {
       console.error("Error uploading resume:", error)
       throw error
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleUploadResume = async () => {
+    if (!selectedFile) {
+      toast.error("Please select a file first")
+      return
+    }
+
+    try {
+      const url = await uploadResume(selectedFile)
+      setUploadedResumeUrl(url)
+      setFormData((prev) => ({ ...prev, resumeUrl: url }))
+      toast.success("Resume uploaded successfully")
+    } catch (error) {
+      console.error("Resume upload failed:", error)
+      toast.error(`Resume upload failed: ${error instanceof Error ? error.message : "Please try again"}`)
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate form
+    if (!formData.fullName || !formData.email) {
+      toast.error("Please fill in all required fields")
+      return
+    }
+
+    // Check if resume is uploaded or needs to be uploaded
+    let resumeUrl = formData.resumeUrl || uploadedResumeUrl
+
+    if (!resumeUrl && selectedFile) {
+      try {
+        toast.info("Uploading resume...")
+        resumeUrl = await uploadResume(selectedFile)
+        setFormData((prev) => ({ ...prev, resumeUrl: resumeUrl }))
+      } catch (error) {
+        console.error("Resume upload failed:", error)
+        toast.error(`Resume upload failed: ${error instanceof Error ? error.message : "Please try again"}`)
+        return
+      }
+    }
+
+    if (!resumeUrl) {
+      toast.error("Please upload your resume")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      // Validate form
-      if (!formData.fullName || !formData.email || !selectedFile) {
-        toast.error("Please fill in all required fields and upload your resume")
-        setIsSubmitting(false)
-        return
-      }
-
-      // Upload resume first
-      let resumeUrl = ""
-      if (selectedFile) {
-        resumeUrl = await uploadResume(selectedFile)
-      }
-
-      // Submit application
+      // Submit application with the resume URL
       const response = await fetch("/api/jobs/apply", {
         method: "POST",
         headers: {
@@ -117,8 +165,12 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
       })
 
       if (!response.ok) {
-        throw new Error("Failed to submit application")
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to submit application")
       }
+
+      const responseData = await response.json()
+      console.log("Application submission response:", responseData)
 
       toast.success("Application submitted successfully!")
 
@@ -128,7 +180,7 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
       }, 2000)
     } catch (error) {
       console.error("Error submitting application:", error)
-      toast.error("Failed to submit application. Please try again.")
+      toast.error(`Failed to submit application: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -209,30 +261,30 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
                 </div>
 
                 <div>
-                  <Label htmlFor="resume">Resume</Label>
+                  <Label htmlFor="resume">Resume*</Label>
                   <div className="mt-1">
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        ref={fileInputRef}
-                        id="resume"
-                        name="resume"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={handleFileChange}
-                        className="hidden"
-                        required
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full justify-start"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        {selectedFile ? selectedFile.name : "Upload Resume (PDF only)"}
-                      </Button>
+                    <div className="flex flex-col space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          ref={fileInputRef}
+                          id="resume"
+                          name="resume"
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          onChange={handleFileChange}
+                          className="flex-1"
+                        />
+                        <Button type="button" onClick={handleUploadResume} disabled={!selectedFile || isUploading}>
+                          {isUploading ? "Uploading..." : "Upload"}
+                        </Button>
+                      </div>
+                      {uploadedResumeUrl && (
+                        <div className="text-sm text-green-600 dark:text-green-400">
+                          Resume uploaded successfully! ✓
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">Max file size: 5MB</p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Max file size: 5MB</p>
                   </div>
                 </div>
 
@@ -265,7 +317,7 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
                 <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting || isUploading}>
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin mr-2 h-4 w-4 border-2 border-t-transparent border-white rounded-full"></div>

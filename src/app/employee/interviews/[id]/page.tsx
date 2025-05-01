@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import React from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, User, Calendar, Clock, MapPin, Video, Edit, Trash2, Briefcase } from "lucide-react"
@@ -20,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { use } from "react"
 
 interface Interview {
   _id: string
@@ -43,14 +43,13 @@ interface Interview {
   meetingLink: string
   notes: string
   status: string
+  location?: string
 }
 
-export default function InterviewDetailsPage({ params }: { params: { id: string } }) {
+export default function InterviewDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
   const router = useRouter()
-  // Use React.use() to unwrap the params Promise
-  const unwrappedParams = React.use(params)
-  const interviewId = unwrappedParams.id
-
+  const interviewId = resolvedParams.id
   const [interview, setInterview] = useState<Interview | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -105,9 +104,12 @@ export default function InterviewDetailsPage({ params }: { params: { id: string 
   const formatDate = (dateString: string) => {
     if (!dateString) return "Not specified"
     try {
-      return new Date(dateString).toLocaleDateString()
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return "Not specified"
+      return date.toLocaleDateString()
     } catch (e) {
-      return "Invalid date"
+      console.error("Date formatting error:", e)
+      return "Not specified"
     }
   }
 

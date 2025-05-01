@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const jobId = params.id
+    const jobId = await params.id
 
     // Connect to database
     const { db } = await connectToDatabase()
