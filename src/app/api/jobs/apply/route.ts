@@ -6,13 +6,63 @@ import { sendEmail } from "@/lib/email"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { fullName, email, phone, linkedIn, resumeUrl, coverLetter, additionalInfo, jobId } = body
+    const { 
+      // Personal Information
+      salutation,
+      fullName,
+      firstName,
+      middleName,
+      lastName,
+      email,
+      phone,
+      alternativePhone,
+      dateOfBirth,
+      gender,
+      currentCity,
+      currentState,
+      pincode,
+      profileOutline,
+      
+      // Education
+      education,
+      certifications,
+      
+      // Experience
+      totalExperience,
+      workExperience,
+      shiftPreference,
+      preferredCities,
+      
+      // Assets & Documents
+      availableAssets,
+      identityDocuments,
+      
+      // Additional
+      skills,
+      portfolioLink,
+      socialMediaLink,
+      
+      // Documents
+      resumeUrl,
+      videoResumeUrl,
+      audioBiodataUrl,
+      photographUrl,
+      
+      // Original fields
+      linkedIn,
+      coverLetter,
+      additionalInfo,
+      
+      // Job ID
+      jobId 
+    } = body
 
     console.log("Application submission data received:", {
       fullName,
       email,
       resumeUrl: resumeUrl ? "URL provided" : "Missing",
       jobId,
+      totalFields: Object.keys(body).length
     })
 
     if (!fullName || !email || !resumeUrl || !jobId) {
@@ -45,20 +95,57 @@ export async function POST(request: NextRequest) {
 
     // Create candidate record with all fields
     const candidate = {
+      // Personal Information
+      salutation: salutation || "",
       name: fullName,
+      firstName: firstName || "",
+      middleName: middleName || "",
+      lastName: lastName || "",
       email,
       phone: phone || "",
-      linkedIn: linkedIn || "",
+      alternativePhone: alternativePhone || "",
+      dateOfBirth: dateOfBirth || "",
+      gender: gender || "",
+      currentCity: currentCity || "",
+      currentState: currentState || "",
+      pincode: pincode || "",
+      profileOutline: profileOutline || "",
+      
+      // Education
+      education: education || [],
+      certifications: certifications || [],
+      
+      // Experience
+      totalExperience: totalExperience || "",
+      workExperience: workExperience || [],
+      shiftPreference: shiftPreference || [],
+      preferredCities: preferredCities || [],
+      
+      // Assets & Documents
+      availableAssets: availableAssets || [],
+      identityDocuments: identityDocuments || [],
+      
+      // Additional
+      skills: skills || [],
+      portfolioLink: portfolioLink || "",
+      socialMediaLink: socialMediaLink || "",
+      
+      // Documents
       resumeUrl,
+      videoResumeUrl: videoResumeUrl || "",
+      audioBiodataUrl: audioBiodataUrl || "",
+      photographUrl: photographUrl || "",
+      
+      // Original fields
+      linkedIn: linkedIn || "",
       coverLetter: coverLetter || "",
       additionalInfo: additionalInfo || "",
+      
+      // Standard fields
       status: "Applied",
       role: job.jobTitle,
       location: job.jobLocation || "",
       experience: job.experienceRange || "",
-      education: "",
-      skills: job.skills || [],
-      notes: "",
       appliedDate: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
