@@ -1,17 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Mail, Phone, Send, Copy, Check } from "lucide-react"
+import { ArrowLeft, Mail, Phone, Send, Copy, Check, AlertCircle } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { use } from "react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface Candidate {
   _id: string
@@ -24,7 +24,7 @@ interface Candidate {
 
 export default function ContactCandidatePage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const candidateId = use(params).id
+  const candidateId = React.use(params).id
   const [candidate, setCandidate] = useState<Candidate | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [emailSubject, setEmailSubject] = useState("")
@@ -32,6 +32,8 @@ export default function ContactCandidatePage({ params }: { params: { id: string 
   const [smsMessage, setSmsMessage] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [phoneFormatted, setPhoneFormatted] = useState("")
+  const [twilioConfigured, setTwilioConfigured] = useState(true) // Default to true, will be updated
 
   useEffect(() => {
     const fetchCandidate = async () => {
@@ -45,6 +47,31 @@ export default function ContactCandidatePage({ params }: { params: { id: string 
 
         const data = await response.json()
         setCandidate(data.candidate)
+
+        // Format phone number for display if it exists
+        if (data.candidate?.phone) {
+          // For Indian numbers, format with +91 prefix for display
+          const phone = data.candidate.phone.replace(/\D/g, "")
+          if (phone.length === 10 && /^[6-9]/.test(phone)) {
+            setPhoneFormatted(`+91 ${phone}`)
+          } else if (phone.length === 10) {
+            // For other 10-digit numbers
+            setPhoneFormatted(`+91 ${phone}`)
+          } else if (phone.length === 11 && phone.startsWith("1")) {
+            // For US numbers
+            setPhoneFormatted(`+${phone}`)
+          } else {
+            // Default formatting
+            setPhoneFormatted(data.candidate.phone)
+          }
+        }
+
+        // Check Twilio configuration status
+        const configResponse = await fetch("/api/config/twilio-status")
+        if (configResponse.ok) {
+          const configData = await configResponse.json()
+          setTwilioConfigured(configData.configured)
+        }
       } catch (error) {
         console.error("Error fetching candidate:", error)
         toast.error("Failed to load candidate details")
@@ -64,12 +91,8 @@ export default function ContactCandidatePage({ params }: { params: { id: string 
 
     try {
       setIsSending(true)
-      // In a real implementation, you would send this to your API
-      // For now, we'll just simulate a successful send
-      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      // Log communication to the database
-      await fetch("/api/employee/communications", {
+      const response = await fetch("/api/employee/communications", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -83,12 +106,18 @@ export default function ContactCandidatePage({ params }: { params: { id: string 
         }),
       })
 
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to send email")
+      }
+
       toast.success(`Email sent to ${candidate.name}`)
       setEmailSubject("")
       setEmailBody("")
     } catch (error) {
       console.error("Error sending email:", error)
-      toast.error("Failed to send email")
+      toast.error(error instanceof Error ? error.message : "Failed to send email")
     } finally {
       setIsSending(false)
     }
@@ -102,12 +131,8 @@ export default function ContactCandidatePage({ params }: { params: { id: string 
 
     try {
       setIsSending(true)
-      // In a real implementation, you would send this to your API
-      // For now, we'll just simulate a successful send
-      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      // Log communication to the database
-      await fetch("/api/employee/communications", {
+      const response = await fetch("/api/employee/communications", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -120,11 +145,22 @@ export default function ContactCandidatePage({ params }: { params: { id: string 
         }),
       })
 
-      toast.success(`SMS sent to ${candidate.name}`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to send SMS")
+      }
+
+      if (!twilioConfigured) {
+        toast.info(`SMS logged for ${candidate.name} (Twilio not configured for actual sending)`)
+      } else {
+        toast.success(`SMS sent to ${candidate.name}`)
+      }
+
       setSmsMessage("")
     } catch (error) {
       console.error("Error sending SMS:", error)
-      toast.error("Failed to send SMS")
+      toast.error(error instanceof Error ? error.message : "Failed to send SMS")
     } finally {
       setIsSending(false)
     }
@@ -208,7 +244,7 @@ export default function ContactCandidatePage({ params }: { params: { id: string 
               {candidate.phone && (
                 <div className="flex items-center space-x-2">
                   <Phone className="h-5 w-5 text-gray-500" />
-                  <span>{candidate.phone}</span>
+                  <span>{phoneFormatted || candidate.phone}</span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -283,9 +319,18 @@ export default function ContactCandidatePage({ params }: { params: { id: string 
                 <CardDescription>Send a text message to the candidate</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {!twilioConfigured && (
+                  <Alert variant="warning" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Twilio is not fully configured. SMS will be logged but not actually sent.
+                      {process.env.NODE_ENV === "development" && " This is normal in development mode."}
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="sms-to">To</Label>
-                  <Input id="sms-to" value={candidate.phone} disabled />
+                  <Input id="sms-to" value={phoneFormatted || candidate.phone} disabled />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sms-message">Message</Label>

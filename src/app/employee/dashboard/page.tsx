@@ -10,7 +10,6 @@ import { User, Briefcase, Settings, LogOut, Users, BarChart, Calendar, Clock, Pl
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ThemeSwitcher } from "@/components/theme-switcher"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
@@ -498,19 +497,18 @@ export default function EmployeeDashboard() {
       <Toaster position="top-center" />
 
       {/* Header */}
-      <header className="bg-purple-700 dark:bg-purple-900 text-white shadow">
+      <header className="bg-black text-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-xl font-semibold">Employee Dashboard</h1>
           <div className="flex items-center space-x-4">
             <span className="text-sm">
               Welcome, {employee.firstName} {employee.lastName}
             </span>
-            <ThemeSwitcher />
             <Button
               variant="outline"
               size="sm"
               onClick={handleLogout}
-              className="text-white border-white hover:bg-purple-800"
+              className="text-white bg-black border-white hover:bg-green-500"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Logout

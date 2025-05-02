@@ -10,8 +10,11 @@ export async function POST(request: NextRequest) {
     // Get user ID from request
     const userId = await getUserFromRequest(request)
 
+    // Debug log to check the userId
+    console.log("User ID from request:", userId)
+
     if (!userId) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 })
     }
 
     // Parse request body
@@ -26,29 +29,75 @@ export async function POST(request: NextRequest) {
     const { db } = await connectToDatabase()
 
     // Find candidate to get contact information
-    const candidate = await db.collection("candidates").findOne({ _id: new ObjectId(candidateId) })
+    let candidate
+    try {
+      candidate = await db.collection("candidates").findOne({
+        _id: new ObjectId(candidateId),
+      })
+    } catch (error) {
+      console.error("Error finding candidate:", error)
+      return NextResponse.json({ success: false, message: "Invalid candidate ID format" }, { status: 400 })
+    }
 
     if (!candidate) {
       return NextResponse.json({ success: false, message: "Candidate not found" }, { status: 404 })
     }
 
-    // Find employee to get sender information
-    const employee = await db.collection("employees").findOne({ _id: new ObjectId(userId) })
+    // Find employee to get sender information - try with both string ID and ObjectId
+    let employee = null
+    try {
+      // First try with ObjectId
+      employee = await db.collection("employees").findOne({
+        _id: new ObjectId(userId),
+      })
+
+      // If not found, try with string ID
+      if (!employee) {
+        employee = await db.collection("employees").findOne({
+          _id: userId,
+        })
+      }
+
+      // If still not found, try with userId as a string field
+      if (!employee) {
+        employee = await db.collection("employees").findOne({
+          userId: userId,
+        })
+      }
+
+      console.log("Employee search result:", employee ? "Found" : "Not found")
+    } catch (error) {
+      console.error("Error finding employee:", error)
+    }
 
     if (!employee) {
-      return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 })
+      // As a fallback, create a default employee object to prevent failure
+      console.warn("Employee not found in database, using fallback data")
+      employee = {
+        firstName: "Support",
+        lastName: "Team",
+        email: process.env.EMAIL_USER || "support@oddianttechlabs.com",
+      }
     }
 
     // Log the communication
-    await db.collection("communications").insertOne({
-      candidateId: new ObjectId(candidateId),
-      employeeId: new ObjectId(userId),
-      type,
-      subject: subject || "",
-      content,
-      sentAt: sentAt || new Date(),
-      status: "sent",
-    })
+    let communicationResult
+    try {
+      communicationResult = await db.collection("communications").insertOne({
+        candidateId: new ObjectId(candidateId),
+        employeeId: userId, // Store as string to match how it's retrieved
+        type,
+        subject: subject || "",
+        content,
+        sentAt: sentAt || new Date(),
+        status: "pending", // Start with pending status
+      })
+
+      console.log("Communication logged with ID:", communicationResult.insertedId)
+    } catch (error) {
+      console.error("Error logging communication:", error)
+      // Continue even if logging fails
+    }
 
     // Send the actual communication
     if (type === "email") {
@@ -57,7 +106,7 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        await sendEmail({
+        const emailResult = await sendEmail({
           to: candidate.email,
           subject: subject || "Message from Oddiant Techlabs",
           text: content,
@@ -70,8 +119,28 @@ export async function POST(request: NextRequest) {
             </p>
           </div>`,
         })
+
+        console.log("Email sent with message ID:", emailResult.messageId)
+
+        // Update communication status to sent
+        if (communicationResult?.insertedId) {
+          await db
+            .collection("communications")
+            .updateOne({ _id: communicationResult.insertedId }, { $set: { status: "sent" } })
+        }
       } catch (emailError) {
         console.error("Error sending email:", emailError)
+
+        // Update communication status to failed
+        if (communicationResult?.insertedId) {
+          await db
+            .collection("communications")
+            .updateOne(
+              { _id: communicationResult.insertedId },
+              { $set: { status: "failed", error: emailError.message } },
+            )
+        }
+
         return NextResponse.json({ success: false, message: "Failed to send email" }, { status: 500 })
       }
     } else if (type === "sms") {
@@ -80,29 +149,57 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        // Check if Twilio is configured
-        if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
-          // Send SMS using Twilio
-          await sendSMS({
-            to: candidate.phone,
-            body: `Message from ${employee.firstName} ${employee.lastName} at Oddiant Techlabs: ${content}`,
-          })
-        } else {
-          // Log the SMS that would have been sent
-          console.log(`SMS would be sent to ${candidate.phone} with content: ${content}`)
+        console.log("Attempting to send SMS to:", candidate.phone)
+
+        // Send SMS using our utility
+        const smsResult = await sendSMS({
+          to: candidate.phone,
+          body: `Message from ${employee.firstName} ${employee.lastName} at Oddiant Techlabs: ${content}`,
+        })
+
+        console.log("SMS sent with SID:", smsResult.sid)
+
+        // Update communication status to sent
+        if (communicationResult?.insertedId) {
+          await db
+            .collection("communications")
+            .updateOne({ _id: communicationResult.insertedId }, { $set: { status: "sent" } })
         }
       } catch (smsError) {
         console.error("Error sending SMS:", smsError)
-        return NextResponse.json({ success: false, message: "Failed to send SMS" }, { status: 500 })
+
+        // Update communication status to failed
+        if (communicationResult?.insertedId) {
+          await db
+            .collection("communications")
+            .updateOne({ _id: communicationResult.insertedId }, { $set: { status: "failed", error: smsError.message } })
+        }
+
+        return NextResponse.json(
+          {
+            success: false,
+            message: smsError instanceof Error ? smsError.message : "Failed to send SMS",
+          },
+          { status: 500 },
+        )
       }
     }
 
     return NextResponse.json(
-      { success: true, message: `${type === "email" ? "Email" : "SMS"} sent successfully` },
+      {
+        success: true,
+        message: `${type === "email" ? "Email" : "SMS"} sent successfully`,
+      },
       { status: 200 },
     )
   } catch (error) {
     console.error(`Error sending communication:`, error)
-    return NextResponse.json({ success: false, message: "Failed to send communication" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to send communication",
+      },
+      { status: 500 },
+    )
   }
 }

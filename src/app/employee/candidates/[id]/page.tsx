@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { EmployeeNavbar } from "@/components/layout/employee-navbar"
-import { use } from "react"
 
 interface Interview {
   _id: string
@@ -18,6 +17,16 @@ interface Interview {
   date: string
   time: string
   status: string
+}
+
+interface Education {
+  level: string
+  mode: string
+  degree: string
+  institution: string
+  startYear: string
+  endYear: string
+  percentage: string
 }
 
 interface Candidate {
@@ -29,7 +38,7 @@ interface Candidate {
   status: string
   location: string
   experience: string
-  education: string
+  education: Education | string // Can be either an object or a string
   skills: string[]
   notes: string
   resumeUrl: string
@@ -39,10 +48,9 @@ interface Candidate {
   avatar?: string
 }
 
-export default function CandidateDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params)
+export default function CandidateDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const candidateId = resolvedParams.id
+  const candidateId = React.use(params).id
   const [candidate, setCandidate] = useState<Candidate | null>(null)
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -149,6 +157,23 @@ export default function CandidateDetailsPage({ params }: { params: Promise<{ id:
     } catch (e) {
       console.error("Date formatting error:", e)
       return "Not available"
+    }
+  }
+
+  // Helper function to safely render education information
+  const renderEducation = (education: Education | string | undefined) => {
+    if (!education) return "Not available"
+
+    if (typeof education === "string") {
+      return education
+    }
+
+    // If education is an object, format it properly
+    try {
+      return `${education.degree} in ${education.institution} (${education.startYear}-${education.endYear})`
+    } catch (e) {
+      console.error("Error rendering education:", e)
+      return "Education information available but could not be displayed"
     }
   }
 
@@ -299,7 +324,7 @@ export default function CandidateDetailsPage({ params }: { params: Promise<{ id:
                     {candidate.education && (
                       <div>
                         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Education</p>
-                        <p>{candidate.education}</p>
+                        <p>{renderEducation(candidate.education)}</p>
                       </div>
                     )}
                     <div>
