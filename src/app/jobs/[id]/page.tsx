@@ -82,10 +82,10 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Button variant="ghost" className="mb-6" onClick={() => router.push("/jobs")}>
+          {/* <Button variant="ghost" className="mb-6" onClick={() => router.push("/employee/dashboard?tab=overview")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Jobs
-          </Button>
+            Back to Job
+          </Button> */}
 
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">

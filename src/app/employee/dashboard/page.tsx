@@ -508,7 +508,7 @@ export default function EmployeeDashboard() {
               variant="outline"
               size="sm"
               onClick={handleLogout}
-              className="text-white bg-black border-white hover:bg-green-500"
+              className="text-black bg-blue-400 border-white hover:white"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Logout

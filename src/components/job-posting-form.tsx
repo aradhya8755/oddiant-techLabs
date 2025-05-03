@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -12,6 +12,613 @@ import { Trash2, X, Plus } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+
+// Department options
+const departmentOptions = [
+  "Business & Strategy",
+  "Human Resources (HR) / Recruiter",
+  "Finance & Accounting",
+  "Marketing & Communications",
+  "Sales & Business Development",
+  "Information Technology (IT)",
+  "Engineering & Production",
+  "Research & Development (R&D)",
+  "Operations",
+  "Customer Success",
+  "Legal & Compliance",
+  "Administrative / Office Management",
+]
+
+// Industry options
+const industryOptions = [
+  "Advertising/PR/Events",
+  "Agriculture/Dairy/Forestry/Fishing",
+  "Airlines/Aviation/Aerospace",
+  "Architecture & Interior Design",
+  "Automotive /Automobile",
+  "Banking /Financial Services /NBFC /Fintech",
+  "Beverages/Liquor",
+  "Chemical /Fertilisers",
+  "Computer Graphics",
+  "Construction Materials",
+  "Consulting Firms",
+  "Cosmetic /Beauty Products",
+  "Digital Marketing /Social Media",
+  "Education",
+  "Educational Institute /Higher Education /School",
+  "E-Learning /Edutech",
+  "Electrical Appliances & Manufacturing",
+  "Electronics Manufacturing",
+  "Engineering & Design",
+  "Entertainment/Media/Publishing",
+  "Farming",
+  "Fashion/Apparels",
+  "Feed Manufacturing",
+  "FMCG",
+  "FnB /QSR /Restaurants",
+  "Food & Fruits Production/Edibles",
+  "Fresher",
+  "Gems & Jewellery",
+  "Government/PSU/Defence",
+  "Hardware /Steel /Iron",
+  "Hardware Machinery & Equipments",
+  "Heat Ventilation Air Conditioning (HVAC)",
+  "Hospitality /Hotels",
+  "Hospitals/Healthcare/Diagnostics",
+  "Infrastructure /Construction & Engineering",
+  "Insurance",
+  "Internet/E-commerce",
+  "IT/Computers - Hardware & Networking",
+  "IT/Computers - Software",
+  "ITES/BPO",
+  "Jewellary /Gold/Diamonds",
+  "KPO/Research/Analytics",
+  "Law Enforcement/Security Services",
+  "Leather",
+  "Legal/Law Firm",
+  "Logistics /Transportation & Courier",
+  "Market Research",
+  "Medical Equipment Manufacturing",
+  "Mining",
+  "NGO/Social Services",
+  "Other",
+  "Overseas /Immigration",
+  "Paints & Febrication",
+  "Petrolium & Natural Gas, Resources",
+  "Pharma & Life Sciences",
+  "Plastic,Rubber & Tyres",
+  "Power/Energy",
+  "Printing & Publications",
+  "Real Estate",
+  "Recruitment/Staffing/RPO",
+  "Retail Outlets",
+  "Semiconductor",
+  "Shipping/Marine Services",
+  "Stationary /Office Equipments",
+  "Stoks & Brokrage /Investment Firm",
+  "Telecom /ISP",
+  "Textiles/Yarn/Fabrics/Garments",
+  "Trading/Import/Export",
+  "Travel/Tourism",
+  "Waste Management & Treatment",
+  "Wellness/Fitness/Sports",
+  "Wood & Timber",
+]
+
+// Location data from the provided file
+const locationData = [
+  "Port Blair - Andaman and Nicobar Islands",
+  "Adoni - Andhra Pradesh",
+  "Amaravati - Andhra Pradesh",
+  "Anantapur - Andhra Pradesh",
+  "Chandragiri - Andhra Pradesh",
+  "Chittoor - Andhra Pradesh",
+  "Dowlaiswaram - Andhra Pradesh",
+  "Eluru - Andhra Pradesh",
+  "Guntur - Andhra Pradesh",
+  "Kadapa - Andhra Pradesh",
+  "Kakinada - Andhra Pradesh",
+  "Kurnool - Andhra Pradesh",
+  "Machilipatnam - Andhra Pradesh",
+  "Nagarjunakoṇḍa - Andhra Pradesh",
+  "Rajahmundry - Andhra Pradesh",
+  "Srikakulam - Andhra Pradesh",
+  "Tirupati - Andhra Pradesh",
+  "Vijayawada - Andhra Pradesh",
+  "Visakhapatnam - Andhra Pradesh",
+  "Vizianagaram - Andhra Pradesh",
+  "Yemmiganur - Andhra Pradesh",
+  "Itanagar - Arunachal Pradesh",
+  "Dhuburi - Assam",
+  "Dibrugarh - Assam",
+  "Dispur - Assam",
+  "Guwahati - Assam",
+  "Jorhat - Assam",
+  "Nagaon - Assam",
+  "Sivasagar - Assam",
+  "Silchar - Assam",
+  "Tezpur - Assam",
+  "Tinsukia - Assam",
+  "Ara - Bihar",
+  "Barauni - Bihar",
+  "Begusarai - Bihar",
+  "Bettiah - Bihar",
+  "Bhagalpur - Bihar",
+  "Bihar Sharif - Bihar",
+  "Bodh Gaya - Bihar",
+  "Buxar - Bihar",
+  "Chapra - Bihar",
+  "Darbhanga - Bihar",
+  "Dehri - Bihar",
+  "Dinapur Nizamat - Bihar",
+  "Gaya - Bihar",
+  "Hajipur - Bihar",
+  "Jamalpur - Bihar",
+  "Katihar - Bihar",
+  "Madhubani - Bihar",
+  "Motihari - Bihar",
+  "Munger - Bihar",
+  "Muzaffarpur - Bihar",
+  "Patna - Bihar",
+  "Purnia - Bihar",
+  "Pusa - Bihar",
+  "Saharsa - Bihar",
+  "Samastipur - Bihar",
+  "Sasaram - Bihar",
+  "Sitamarhi - Bihar",
+  "Siwan - Bihar",
+  "Chandigarh - Chandigarh",
+  "Ambikapur - Chhattisgarh",
+  "Bhilai - Chhattisgarh",
+  "Bilaspur - Chhattisgarh",
+  "Dhamtari - Chhattisgarh",
+  "Durg - Chhattisgarh",
+  "Jagdalpur - Chhattisgarh",
+  "Raipur - Chhattisgarh",
+  "Rajnandgaon - Chhattisgarh",
+  "Daman - Dadra and Nagar Haveli and Daman and Diu",
+  "Diu - Dadra and Nagar Haveli and Daman and Diu",
+  "Silvassa - Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi - Delhi",
+  "New Delhi - Delhi",
+  "Madgaon - Goa",
+  "Panaji - Goa",
+  "Ahmadabad - Gujarat",
+  "Amreli - Gujarat",
+  "Bharuch - Gujarat",
+  "Bhavnagar - Gujarat",
+  "Bhuj - Gujarat",
+  "Dwarka - Gujarat",
+  "Gandhinagar - Gujarat",
+  "Godhra - Gujarat",
+  "Jamnagar - Gujarat",
+  "Junagadh - Gujarat",
+  "Kandla - Gujarat",
+  "Khambhat - Gujarat",
+  "Kheda - Gujarat",
+  "Mahesana - Gujarat",
+  "Morbi - Gujarat",
+  "Nadiad - Gujarat",
+  "Navsari - Gujarat",
+  "Okha - Gujarat",
+  "Palanpur - Gujarat",
+  "Patan - Gujarat",
+  "Porbandar - Gujarat",
+  "Rajkot - Gujarat",
+  "Surat - Gujarat",
+  "Surendranagar - Gujarat",
+  "Valsad - Gujarat",
+  "Veraval - Gujarat",
+  "Ambala - Haryana",
+  "Bhiwani - Haryana",
+  "Chandigarh - Haryana",
+  "Faridabad - Haryana",
+  "Firozpur Jhirka - Haryana",
+  "Gurugram - Haryana",
+  "Hansi - Haryana",
+  "Hisar - Haryana",
+  "Jind - Haryana",
+  "Kaithal - Haryana",
+  "Karnal - Haryana",
+  "Kurukshetra - Haryana",
+  "Panipat - Haryana",
+  "Pehowa - Haryana",
+  "Rewari - Haryana",
+  "Rohtak - Haryana",
+  "Sirsa - Haryana",
+  "Sonipat - Haryana",
+  "Bilaspur - Himachal Pradesh",
+  "Chamba - Himachal Pradesh",
+  "Dalhousie - Himachal Pradesh",
+  "Dharmshala - Himachal Pradesh",
+  "Hamirpur - Himachal Pradesh",
+  "Kangra - Himachal Pradesh",
+  "Kullu - Himachal Pradesh",
+  "Mandi - Himachal Pradesh",
+  "Nahan - Himachal Pradesh",
+  "Shimla - Himachal Pradesh",
+  "Una - Himachal Pradesh",
+  "Anantnag - Jammu and Kashmir",
+  "Baramula - Jammu and Kashmir",
+  "Doda - Jammu and Kashmir",
+  "Gulmarg - Jammu and Kashmir",
+  "Jammu - Jammu and Kashmir",
+  "Kathua - Jammu and Kashmir",
+  "Punch - Jammu and Kashmir",
+  "Rajouri - Jammu and Kashmir",
+  "Srinagar - Jammu and Kashmir",
+  "Udhampur - Jammu and Kashmir",
+  "Bokaro - Jharkhand",
+  "Chaibasa - Jharkhand",
+  "Deoghar - Jharkhand",
+  "Dhanbad - Jharkhand",
+  "Dumka - Jharkhand",
+  "Giridih - Jharkhand",
+  "Hazaribag - Jharkhand",
+  "Jamshedpur - Jharkhand",
+  "Jharia - Jharkhand",
+  "Rajmahal - Jharkhand",
+  "Ranchi - Jharkhand",
+  "Saraikela - Jharkhand",
+  "Badami - Karnataka",
+  "Ballari - Karnataka",
+  "Bengaluru - Karnataka",
+  "Belagavi - Karnataka",
+  "Bhadravati - Karnataka",
+  "Bidar - Karnataka",
+  "Chikkamagaluru - Karnataka",
+  "Chitradurga - Karnataka",
+  "Davangere - Karnataka",
+  "Halebidu - Karnataka",
+  "Hassan - Karnataka",
+  "Hubballi-Dharwad - Karnataka",
+  "Kalaburagi - Karnataka",
+  "Kolar - Karnataka",
+  "Madikeri - Karnataka",
+  "Mandya - Karnataka",
+  "Mangaluru - Karnataka",
+  "Mysuru - Karnataka",
+  "Raichur - Karnataka",
+  "Shivamogga / Shimoga - Karnataka",
+  "Shravanabelagola - Karnataka",
+  "Shrirangapattana - Karnataka",
+  "Tumakuru - Karnataka",
+  "Vijayapura - Karnataka",
+  "Alappuzha - Kerala",
+  "Vatakara - Kerala",
+  "Idukki - Kerala",
+  "Kannur - Kerala",
+  "Kochi - Kerala",
+  "Kollam - Kerala",
+  "Kottayam - Kerala",
+  "Kozhikode - Kerala",
+  "Mattancheri - Kerala",
+  "Palakkad - Kerala",
+  "Thalassery - Kerala",
+  "Thiruvananthapuram - Kerala",
+  "Thrissur - Kerala",
+  "Kargil - Ladakh",
+  "Leh - Ladakh",
+  "Balaghat - Madhya Pradesh",
+  "Barwani - Madhya Pradesh",
+  "Betul - Madhya Pradesh",
+  "Bharhut - Madhya Pradesh",
+  "Bhind - Madhya Pradesh",
+  "Bhojpur - Madhya Pradesh",
+  "Bhopal - Madhya Pradesh",
+  "Burhanpur - Madhya Pradesh",
+  "Chhatarpur - Madhya Pradesh",
+  "Chhindwara - Madhya Pradesh",
+  "Damoh - Madhya Pradesh",
+  "Datia - Madhya Pradesh",
+  "Dewas - Madhya Pradesh",
+  "Dhar - Madhya Pradesh",
+  "Dr. Ambedkar Nagar (Mhow) - Madhya Pradesh",
+  "Guna - Madhya Pradesh",
+  "Gwalior - Madhya Pradesh",
+  "Hoshangabad - Madhya Pradesh",
+  "Indore - Madhya Pradesh",
+  "Itarsi - Madhya Pradesh",
+  "Jabalpur - Madhya Pradesh",
+  "Jhabua - Madhya Pradesh",
+  "Khajuraho - Madhya Pradesh",
+  "Khandwa - Madhya Pradesh",
+  "Khargone - Madhya Pradesh",
+  "Maheshwar - Madhya Pradesh",
+  "Mandla - Madhya Pradesh",
+  "Mandsaur - Madhya Pradesh",
+  "Morena - Madhya Pradesh",
+  "Murwara - Madhya Pradesh",
+  "Narsimhapur - Madhya Pradesh",
+  "Narsinghgarh - Madhya Pradesh",
+  "Narwar - Madhya Pradesh",
+  "Neemuch - Madhya Pradesh",
+  "Nowgong - Madhya Pradesh",
+  "Orchha - Madhya Pradesh",
+  "Panna - Madhya Pradesh",
+  "Raisen - Madhya Pradesh",
+  "Rajgarh - Madhya Pradesh",
+  "Ratlam - Madhya Pradesh",
+  "Rewa - Madhya Pradesh",
+  "Sagar - Madhya Pradesh",
+  "Sarangpur - Madhya Pradesh",
+  "Satna - Madhya Pradesh",
+  "Sehore - Madhya Pradesh",
+  "Seoni - Madhya Pradesh",
+  "Shahdol - Madhya Pradesh",
+  "Shajapur - Madhya Pradesh",
+  "Sheopur - Madhya Pradesh",
+  "Shivpuri - Madhya Pradesh",
+  "Ujjain - Madhya Pradesh",
+  "Vidisha - Madhya Pradesh",
+  "Ahmadnagar - Maharashtra",
+  "Akola - Maharashtra",
+  "Amravati - Maharashtra",
+  "Aurangabad - Maharashtra",
+  "Bhandara - Maharashtra",
+  "Bhusawal - Maharashtra",
+  "Bid - Maharashtra",
+  "Buldhana - Maharashtra",
+  "Chandrapur - Maharashtra",
+  "Daulatabad - Maharashtra",
+  "Dhule - Maharashtra",
+  "Jalgaon - Maharashtra",
+  "Kalyan - Maharashtra",
+  "Karli - Maharashtra",
+  "Kolhapur - Maharashtra",
+  "Mahabaleshwar - Maharashtra",
+  "Malegaon - Maharashtra",
+  "Matheran - Maharashtra",
+  "Mumbai - Maharashtra",
+  "Nagpur - Maharashtra",
+  "Nanded - Maharashtra",
+  "Nashik - Maharashtra",
+  "Osmanabad - Maharashtra",
+  "Pandharpur - Maharashtra",
+  "Parbhani - Maharashtra",
+  "Pune - Maharashtra",
+  "Ratnagiri - Maharashtra",
+  "Sangli - Maharashtra",
+  "Satara - Maharashtra",
+  "Sevagram - Maharashtra",
+  "Solapur - Maharashtra",
+  "Thane - Maharashtra",
+  "Ulhasnagar - Maharashtra",
+  "Vasai-Virar - Maharashtra",
+  "Wardha - Maharashtra",
+  "Yavatmal - Maharashtra",
+  "Imphal - Manipur",
+  "Cherrapunji - Meghalaya",
+  "Shillong - Meghalaya",
+  "Aizawl - Mizoram",
+  "Lunglei - Mizoram",
+  "Kohima - Nagaland",
+  "Mon - Nagaland",
+  "Phek - Nagaland",
+  "Wokha - Nagaland",
+  "Zunheboto - Nagaland",
+  "Balangir - Odisha",
+  "Baleshwar - Odisha",
+  "Baripada - Odisha",
+  "Bhubaneshwar - Odisha",
+  "Brahmapur - Odisha",
+  "Cuttack - Odisha",
+  "Dhenkanal - Odisha",
+  "Kendujhar - Odisha",
+  "Konark - Odisha",
+  "Koraput - Odisha",
+  "Paradip - Odisha",
+  "Phulabani - Odisha",
+  "Puri - Odisha",
+  "Sambalpur - Odisha",
+  "Udayagiri - Odisha",
+  "Karaikal - Puducherry",
+  "Mahe - Puducherry",
+  "Puducherry - Puducherry",
+  "Yanam - Puducherry",
+  "Amritsar - Punjab",
+  "Batala - Punjab",
+  "Chandigarh - Punjab",
+  "Faridkot - Punjab",
+  "Firozpur - Punjab",
+  "Gurdaspur - Punjab",
+  "Hoshiarpur - Punjab",
+  "Jalandhar - Punjab",
+  "Kapurthala - Punjab",
+  "Ludhiana - Punjab",
+  "Nabha - Punjab",
+  "Patiala - Punjab",
+  "Rupnagar - Punjab",
+  "Sangrur - Punjab",
+  "Abu - Rajasthan",
+  "Ajmer - Rajasthan",
+  "Alwar - Rajasthan",
+  "Amer - Rajasthan",
+  "Barmer - Rajasthan",
+  "Beawar - Rajasthan",
+  "Bharatpur - Rajasthan",
+  "Bhilwara - Rajasthan",
+  "Bikaner - Rajasthan",
+  "Bundi - Rajasthan",
+  "Chittaurgarh - Rajasthan",
+  "Churu - Rajasthan",
+  "Dhaulpur - Rajasthan",
+  "Dungarpur - Rajasthan",
+  "Ganganagar - Rajasthan",
+  "Hanumangarh - Rajasthan",
+  "Jaipur - Rajasthan",
+  "Jaisalmer - Rajasthan",
+  "Jalor - Rajasthan",
+  "Jhalawar - Rajasthan",
+  "Jhunjhunu - Rajasthan",
+  "Jodhpur - Rajasthan",
+  "Kishangarh - Rajasthan",
+  "Kota - Rajasthan",
+  "Merta - Rajasthan",
+  "Nagaur - Rajasthan",
+  "Nathdwara - Rajasthan",
+  "Pali - Rajasthan",
+  "Phalodi - Rajasthan",
+  "Pushkar - Rajasthan",
+  "Sawai Madhopur - Rajasthan",
+  "Shahpura - Rajasthan",
+  "Sikar - Rajasthan",
+  "Sirohi - Rajasthan",
+  "Tonk - Rajasthan",
+  "Udaipur - Rajasthan",
+  "Gangtok - Sikkim",
+  "Gyalshing - Sikkim",
+  "Lachung - Sikkim",
+  "Mangan - Sikkim",
+  "Arcot - Tamil Nadu",
+  "Chengalpattu - Tamil Nadu",
+  "Chennai - Tamil Nadu",
+  "Chidambaram - Tamil Nadu",
+  "Coimbatore - Tamil Nadu",
+  "Cuddalore - Tamil Nadu",
+  "Dharmapuri - Tamil Nadu",
+  "Dindigul - Tamil Nadu",
+  "Erode - Tamil Nadu",
+  "Kanchipuram - Tamil Nadu",
+  "Kanniyakumari - Tamil Nadu",
+  "Kodaikanal - Tamil Nadu",
+  "Kumbakonam - Tamil Nadu",
+  "Madurai - Tamil Nadu",
+  "Mamallapuram - Tamil Nadu",
+  "Nagappattinam - Tamil Nadu",
+  "Nagercoil - Tamil Nadu",
+  "Palayamkottai - Tamil Nadu",
+  "Pudukkottai - Tamil Nadu",
+  "Rajapalayam - Tamil Nadu",
+  "Ramanathapuram - Tamil Nadu",
+  "Salem - Tamil Nadu",
+  "Thanjavur - Tamil Nadu",
+  "Tiruchchirappalli - Tamil Nadu",
+  "Tirunelveli - Tamil Nadu",
+  "Tiruppur - Tamil Nadu",
+  "Thoothukudi - Tamil Nadu",
+  "Udhagamandalam - Tamil Nadu",
+  "Vellore - Tamil Nadu",
+  "Hyderabad - Telangana",
+  "Karimnagar - Telangana",
+  "Khammam - Telangana",
+  "Mahbubnagar - Telangana",
+  "Nizamabad - Telangana",
+  "Sangareddi - Telangana",
+  "Warangal - Telangana",
+  "Agartala - Tripura",
+  "Agra - Uttar Pradesh",
+  "Aligarh - Uttar Pradesh",
+  "Amroha - Uttar Pradesh",
+  "Ayodhya - Uttar Pradesh",
+  "Azamgarh - Uttar Pradesh",
+  "Bahraich - Uttar Pradesh",
+  "Ballia - Uttar Pradesh",
+  "Banda - Uttar Pradesh",
+  "Bara Banki - Uttar Pradesh",
+  "Bareilly - Uttar Pradesh",
+  "Basti - Uttar Pradesh",
+  "Bijnor - Uttar Pradesh",
+  "Bithur - Uttar Pradesh",
+  "Budaun - Uttar Pradesh",
+  "Bulandshahr - Uttar Pradesh",
+  "Deoria - Uttar Pradesh",
+  "Etah - Uttar Pradesh",
+  "Etawah - Uttar Pradesh",
+  "Faizabad - Uttar Pradesh",
+  "Farrukhabad-cum-Fatehgarh - Uttar Pradesh",
+  "Fatehpur - Uttar Pradesh",
+  "Fatehpur Sikri - Uttar Pradesh",
+  "Ghaziabad - Uttar Pradesh",
+  "Ghazipur - Uttar Pradesh",
+  "Gonda - Uttar Pradesh",
+  "Gorakhpur - Uttar Pradesh",
+  "Hamirpur - Uttar Pradesh",
+  "Hardoi - Uttar Pradesh",
+  "Hathras - Uttar Pradesh",
+  "Jalaun - Uttar Pradesh",
+  "Jaunpur - Uttar Pradesh",
+  "Jhansi - Uttar Pradesh",
+  "Kannauj - Uttar Pradesh",
+  "Kanpur - Uttar Pradesh",
+  "Lakhimpur - Uttar Pradesh",
+  "Lalitpur - Uttar Pradesh",
+  "Lucknow - Uttar Pradesh",
+  "Mainpuri - Uttar Pradesh",
+  "Mathura - Uttar Pradesh",
+  "Meerut - Uttar Pradesh",
+  "Mirzapur-Vindhyachal - Uttar Pradesh",
+  "Moradabad - Uttar Pradesh",
+  "Muzaffarnagar - Uttar Pradesh",
+  "Partapgarh - Uttar Pradesh",
+  "Pilibhit - Uttar Pradesh",
+  "Prayagraj - Uttar Pradesh",
+  "Rae Bareli - Uttar Pradesh",
+  "Rampur - Uttar Pradesh",
+  "Saharanpur - Uttar Pradesh",
+  "Sambhal - Uttar Pradesh",
+  "Shahjahanpur - Uttar Pradesh",
+  "Sitapur - Uttar Pradesh",
+  "Sultanpur - Uttar Pradesh",
+  "Tehri - Uttar Pradesh",
+  "Varanasi - Uttar Pradesh",
+  "Almora - Uttarakhand",
+  "Dehra Dun - Uttarakhand",
+  "Haridwar - Uttarakhand",
+  "Mussoorie - Uttarakhand",
+  "Nainital - Uttarakhand",
+  "Pithoragarh - Uttarakhand",
+  "Alipore - West Bengal",
+  "Alipur Duar - West Bengal",
+  "Asansol - West Bengal",
+  "Baharampur - West Bengal",
+  "Bally - West Bengal",
+  "Balurghat - West Bengal",
+  "Bankura - West Bengal",
+  "Baranagar - West Bengal",
+  "Barasat - West Bengal",
+  "Barrackpore - West Bengal",
+  "Basirhat - West Bengal",
+  "Bhatpara - West Bengal",
+  "Bishnupur - West Bengal",
+  "Budge Budge - West Bengal",
+  "Burdwan - West Bengal",
+  "Chandernagore - West Bengal",
+  "Darjeeling - West Bengal",
+  "Diamond Harbour - West Bengal",
+  "Dum Dum - West Bengal",
+  "Durgapur - West Bengal",
+  "Halisahar - West Bengal",
+  "Haora - West Bengal",
+  "Hugli - West Bengal",
+  "Ingraj Bazar - West Bengal",
+  "Jalpaiguri - West Bengal",
+  "Kalimpong - West Bengal",
+  "Kamarhati - West Bengal",
+  "Kanchrapara - West Bengal",
+  "Kharagpur - West Bengal",
+  "Cooch Behar - West Bengal",
+  "Kolkata - West Bengal",
+  "Krishnanagar - West Bengal",
+  "Malda - West Bengal",
+  "Midnapore - West Bengal",
+  "Murshidabad - West Bengal",
+  "Nabadwip - West Bengal",
+  "Palashi - West Bengal",
+  "Panihati - West Bengal",
+  "Purulia - West Bengal",
+  "Raiganj - West Bengal",
+  "Santipur - West Bengal",
+  "Shantiniketan - West Bengal",
+  "Shrirampur - West Bengal",
+  "Siliguri - West Bengal",
+  "Siuri - West Bengal",
+  "Tamluk - West Bengal",
+  "Titagarh - West Bengal",
+  "Remote",
+  "Noida - Uttar Pradesh",
+  "Gurugram - Haryana",
+]
 
 interface JobPostingFormProps {
   jobId?: string
@@ -30,10 +637,16 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
   const [isLoading, setIsLoading] = useState(false)
   const [jobTitle, setJobTitle] = useState("")
   const [jobLocation, setJobLocation] = useState("")
+  const [locationSearchTerm, setLocationSearchTerm] = useState("")
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false)
+  const [filteredLocations, setFilteredLocations] = useState<string[]>([])
   const [experienceRange, setExperienceRange] = useState("")
   const [jobType, setJobType] = useState("")
   const [salaryRange, setSalaryRange] = useState("")
   const [industry, setIndustry] = useState("")
+  const [industrySearchTerm, setIndustrySearchTerm] = useState("")
+  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false)
+  const [filteredIndustries, setFilteredIndustries] = useState<string[]>([])
   const [department, setDepartment] = useState("")
   const [skills, setSkills] = useState<string[]>([])
   const [newSkill, setNewSkill] = useState("")
@@ -52,11 +665,55 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
   const [newQuestion, setNewQuestion] = useState("")
   const [answers, setAnswers] = useState<string[]>([])
 
+  const locationDropdownRef = useRef<HTMLDivElement>(null)
+  const industryDropdownRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (jobId && isEditing) {
       fetchJobDetails()
     }
   }, [jobId, isEditing])
+
+  useEffect(() => {
+    // Filter locations based on search term
+    if (locationSearchTerm) {
+      const filtered = locationData.filter((location) =>
+        location.toLowerCase().includes(locationSearchTerm.toLowerCase()),
+      )
+      setFilteredLocations(filtered)
+    } else {
+      setFilteredLocations([])
+    }
+  }, [locationSearchTerm])
+
+  useEffect(() => {
+    // Filter industries based on search term
+    if (industrySearchTerm) {
+      const filtered = industryOptions.filter((industry) =>
+        industry.toLowerCase().includes(industrySearchTerm.toLowerCase()),
+      )
+      setFilteredIndustries(filtered)
+    } else {
+      setFilteredIndustries([])
+    }
+  }, [industrySearchTerm])
+
+  useEffect(() => {
+    // Close dropdowns when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target as Node)) {
+        setShowLocationDropdown(false)
+      }
+      if (industryDropdownRef.current && !industryDropdownRef.current.contains(event.target as Node)) {
+        setShowIndustryDropdown(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
 
   const fetchJobDetails = async () => {
     try {
@@ -130,6 +787,18 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
     const updatedAnswers = [...answers]
     updatedAnswers[index] = value
     setAnswers(updatedAnswers)
+  }
+
+  const handleLocationSelect = (location: string) => {
+    setJobLocation(location)
+    setLocationSearchTerm("")
+    setShowLocationDropdown(false)
+  }
+
+  const handleIndustrySelect = (industry: string) => {
+    setIndustry(industry)
+    setIndustrySearchTerm("")
+    setShowIndustryDropdown(false)
   }
 
   const validateForm = () => {
@@ -240,14 +909,46 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
         </div>
         <div>
           <Label htmlFor="jobLocation">Job Location*</Label>
-          <Input
-            type="text"
-            id="jobLocation"
-            value={jobLocation}
-            onChange={(e) => setJobLocation(e.target.value)}
-            placeholder="e.g. New York, NY or Remote"
-            required
-          />
+          <div className="relative" ref={locationDropdownRef}>
+            <input
+              type="text"
+              id="jobLocation"
+              value={jobLocation}
+              onChange={(e) => {
+                setJobLocation(e.target.value)
+                setLocationSearchTerm(e.target.value)
+                setShowLocationDropdown(true)
+              }}
+              onClick={() => setShowLocationDropdown(true)}
+              placeholder="e.g. Noida - Uttar Pradesh or Remote"
+              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md"
+              required
+            />
+            {showLocationDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <input
+                  type="text"
+                  placeholder="Search locations..."
+                  value={locationSearchTerm}
+                  onChange={(e) => setLocationSearchTerm(e.target.value)}
+                  className="w-full px-3 py-2 border-b border-gray-300 dark:border-gray-600"
+                />
+                {filteredLocations.length > 0 ? (
+                  filteredLocations.map((location, index) => (
+                    <div
+                      key={index}
+                      className="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => handleLocationSelect(location)}
+                    >
+                      {location}
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-gray-500">No locations found</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <div>
           <Label htmlFor="experienceRange">Experience Range*</Label>
@@ -287,28 +988,66 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
             id="salaryRange"
             value={salaryRange}
             onChange={(e) => setSalaryRange(e.target.value)}
-            placeholder="e.g. $80,000 - $100,000"
+            placeholder="e.g. Rs. 80,000 - Rs. 100,000"
           />
         </div>
         <div>
           <Label htmlFor="industry">Industry</Label>
-          <Input
-            type="text"
-            id="industry"
-            value={industry}
-            onChange={(e) => setIndustry(e.target.value)}
-            placeholder="e.g. Technology"
-          />
+          <div className="relative" ref={industryDropdownRef}>
+            <input
+              type="text"
+              id="industry"
+              value={industry}
+              onChange={(e) => {
+                setIndustry(e.target.value)
+                setIndustrySearchTerm(e.target.value)
+                setShowIndustryDropdown(true)
+              }}
+              onClick={() => setShowIndustryDropdown(true)}
+              placeholder="e.g. Technology"
+              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md"
+            />
+            {showIndustryDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <input
+                  type="text"
+                  placeholder="Search industries..."
+                  value={industrySearchTerm}
+                  onChange={(e) => setIndustrySearchTerm(e.target.value)}
+                  className="w-full px-3 py-2 border-b border-gray-300 dark:border-gray-600"
+                />
+                {filteredIndustries.length > 0 ? (
+                  filteredIndustries.map((industry, index) => (
+                    <div
+                      key={index}
+                      className="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => handleIndustrySelect(industry)}
+                    >
+                      {industry}
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-gray-500">No industries found</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <div>
           <Label htmlFor="department">Department</Label>
-          <Input
-            type="text"
+          <select
             id="department"
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
-            placeholder="e.g. Engineering"
-          />
+            className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md"
+          >
+            <option value="">Select department</option>
+            {departmentOptions.map((dept, index) => (
+              <option key={index} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -372,10 +1111,12 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
         >
           <option value="">Select preference</option>
           <option value="high_school">High School</option>
-          <option value="associates">Associate's Degree</option>
+          <option value="intermediate">Intermediate</option>
           <option value="bachelors">Bachelor's Degree</option>
           <option value="masters">Master's Degree</option>
           <option value="phd">PhD</option>
+          <option value="diploma">Diploma</option>
+          <option value="certificate">Certificate</option>
           <option value="none">No Preference</option>
         </select>
       </div>
@@ -570,7 +1311,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
         </Button>
         <Button
           onClick={handleSubmit}
-          className="bg-purple-700 hover:bg-purple-800 text-white"
+          className="bg-black hover:bg-green-500 hover:text-black text-white"
           disabled={isLoading || isSubmitting}
         >
           {isLoading || isSubmitting ? (
