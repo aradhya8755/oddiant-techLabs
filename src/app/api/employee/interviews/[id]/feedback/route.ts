@@ -12,7 +12,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
     }
 
-    const interviewId = params.id
+    const interviewId = await params.id
     const { rating, strengths, weaknesses, recommendation } = await request.json()
 
     if (!rating || !strengths || !weaknesses || !recommendation) {
