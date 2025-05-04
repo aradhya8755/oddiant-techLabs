@@ -8,10 +8,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Trash2, X, Plus } from "lucide-react"
+import { Trash2, X, Plus, AlertCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Department options
 const departmentOptions = [
@@ -620,6 +621,61 @@ const locationData = [
   "Gurugram - Haryana",
 ]
 
+// List of inappropriate words to filter (English and Hindi)
+const inappropriateWords = [
+  // English inappropriate words
+  "sex",
+  "porn",
+  "xxx",
+  "adult",
+  "nude",
+  "naked",
+  "fuck",
+  "shit",
+  "ass",
+  "damn",
+  "bitch",
+  "bastard",
+  "cunt",
+  "dick",
+  "pussy",
+  "cock",
+  "penis",
+  "vagina",
+  "boob",
+  "whore",
+  "slut",
+  "hoe",
+  "hooker",
+  "prostitute",
+  "masturbate",
+  "orgasm",
+  "cum",
+
+  // Hindi inappropriate words (romanized)
+  "chutiya",
+  "bhosdi",
+  "gandu",
+  "lund",
+  "lauda",
+  "chut",
+  "randi",
+  "bhosdike",
+  "madarchod",
+  "behenchod",
+  "behen chod",
+  "maderchod",
+  "gaand",
+  "chodu",
+  "loda",
+  "jhaat",
+  "harami",
+  "saala",
+  "kutte",
+  "kamina",
+  "chutia",
+]
+
 interface JobPostingFormProps {
   jobId?: string
   isEditing?: boolean
@@ -651,8 +707,10 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
   const [skills, setSkills] = useState<string[]>([])
   const [newSkill, setNewSkill] = useState("")
   const [jobDescription, setJobDescription] = useState("")
+  const [hasInappropriateContent, setHasInappropriateContent] = useState(false)
   const [educationalPreference, setEducationalPreference] = useState("")
   const [shiftPreference, setShiftPreference] = useState<string[]>([])
+  const [genderPreference, setGenderPreference] = useState<string[]>([])
   const [assetsRequirement, setAssetsRequirement] = useState({
     wifi: false,
     laptop: false,
@@ -739,6 +797,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
       setJobDescription(job.jobDescription || "")
       setEducationalPreference(job.educationalPreference || "")
       setShiftPreference(job.shiftPreference || [])
+      setGenderPreference(job.genderPreference || [])
       setAssetsRequirement(job.assetsRequirement || { wifi: false, laptop: false, vehicle: false })
       setCompanyName(job.companyName || "")
       setAboutCompany(job.aboutCompany || "")
@@ -751,6 +810,18 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Check for inappropriate content in job description
+  const checkForInappropriateContent = (text: string) => {
+    const words = text.toLowerCase().split(/\s+/)
+    return words.some((word) => inappropriateWords.some((inappropriate) => word.includes(inappropriate)))
+  }
+
+  const handleJobDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newText = e.target.value
+    setJobDescription(newText)
+    setHasInappropriateContent(checkForInappropriateContent(newText))
   }
 
   const handleAddSkill = () => {
@@ -822,6 +893,10 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
       toast.error("Job description is required")
       return false
     }
+    if (hasInappropriateContent) {
+      toast.error("Job description contains inappropriate content")
+      return false
+    }
     return true
   }
 
@@ -843,6 +918,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
         jobDescription,
         educationalPreference,
         shiftPreference,
+        genderPreference,
         assetsRequirement,
         companyName,
         aboutCompany,
@@ -960,6 +1036,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
             required
           >
             <option value="">Select range</option>
+            <option value="fresher">Fresher</option>
             <option value="0-2">0-2 years</option>
             <option value="2-5">2-5 years</option>
             <option value="5-10">5-10 years</option>
@@ -1089,15 +1166,24 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
         <Textarea
           id="jobDescription"
           value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
+          onChange={handleJobDescriptionChange}
           rows={5}
           maxLength={4000}
           placeholder="Describe the job responsibilities, requirements, and any other relevant information"
           required
+          className={hasInappropriateContent ? "border-red-500 focus:ring-red-500" : ""}
         />
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {jobDescription.split(/\s+/).filter(Boolean).length} / 750 words
         </p>
+        {hasInappropriateContent && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Job description contains inappropriate content. Please remove any offensive or adult language.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       {/* Educational Preference */}
@@ -1215,6 +1301,77 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
         </div>
       </div>
 
+      {/* Gender Preference */}
+      <div className="space-y-2">
+        <Label>Gender Preference</Label>
+        <div className="flex flex-col space-y-2 mt-2">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="genderMale"
+              checked={genderPreference.includes("male")}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setGenderPreference([...genderPreference, "male"])
+                } else {
+                  setGenderPreference(genderPreference.filter((pref) => pref !== "male"))
+                }
+              }}
+            />
+            <Label htmlFor="genderMale" className="font-normal">
+              Male
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="genderFemale"
+              checked={genderPreference.includes("female")}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setGenderPreference([...genderPreference, "female"])
+                } else {
+                  setGenderPreference(genderPreference.filter((pref) => pref !== "female"))
+                }
+              }}
+            />
+            <Label htmlFor="genderFemale" className="font-normal">
+              Female
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="genderOther"
+              checked={genderPreference.includes("other")}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setGenderPreference([...genderPreference, "other"])
+                } else {
+                  setGenderPreference(genderPreference.filter((pref) => pref !== "other"))
+                }
+              }}
+            />
+            <Label htmlFor="genderOther" className="font-normal">
+              Other
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="genderNoPreference"
+              checked={genderPreference.includes("no_preference")}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setGenderPreference(["no_preference"])
+                } else {
+                  setGenderPreference(genderPreference.filter((pref) => pref !== "no_preference"))
+                }
+              }}
+            />
+            <Label htmlFor="genderNoPreference" className="font-normal">
+              No Preference
+            </Label>
+          </div>
+        </div>
+      </div>
+
       {/* Employer Details */}
       <h3 className="text-lg font-medium">Employer Details</h3>
       <div className="space-y-4">
@@ -1312,7 +1469,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
         <Button
           onClick={handleSubmit}
           className="bg-black hover:bg-green-500 hover:text-black text-white"
-          disabled={isLoading || isSubmitting}
+          disabled={isLoading || isSubmitting || hasInappropriateContent}
         >
           {isLoading || isSubmitting ? (
             <>

@@ -4,7 +4,26 @@ import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, FileText, User } from "lucide-react"
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  FileText,
+  User,
+  Briefcase,
+  GraduationCap,
+  Clock,
+  Laptop,
+  CreditCard,
+  LinkIcon,
+  Linkedin,
+  FileCheck,
+  MessageSquare,
+  Info,
+  Award,
+} from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -29,6 +48,26 @@ interface Education {
   percentage: string
 }
 
+interface Certification {
+  name: string
+  issuer: string
+  date: string
+  expiryDate?: string
+  credentialId?: string
+  credentialUrl?: string
+}
+
+interface WorkExperience {
+  title: string
+  department: string
+  companyName: string
+  tenure: string
+  summary: string
+  currentSalary: string
+  expectedSalary: string
+  noticePeriod: string
+}
+
 interface Candidate {
   _id: string
   name: string
@@ -38,17 +77,63 @@ interface Candidate {
   status: string
   location: string
   experience: string
-  education: Education | string // Can be either an object or a string
+  education: Education | string | Education[]
   skills: string[]
   notes: string
   resumeUrl: string
   appliedDate: string
   createdAt: string
   updatedAt: string
+
+  // Personal Information
+  salutation?: string
+  firstName?: string
+  middleName?: string
+  lastName?: string
+  alternativePhone?: string
+  dateOfBirth?: string
+  gender?: string
+  currentCity?: string
+  currentState?: string
+  pincode?: string
+  profileOutline?: string
+
+  // Experience
+  totalExperience?: string
+  workExperience?: WorkExperience[]
+  shiftPreference?: string[]
+  preferredCities?: string[]
+
+  // Education & Certifications
+  certifications?: Certification[]
+
+  // Assets & Documents
+  availableAssets?: string[]
+  identityDocuments?: string[]
+
+  // Media
   avatar?: string
+  videoResumeUrl?: string
+  audioBiodataUrl?: string
+  photographUrl?: string
+
+  // Additional
+  portfolioLink?: string
+  socialMediaLink?: string
+  linkedIn?: string
+  coverLetter?: string
+  additionalInfo?: string
+
+  // Formatted fields
+  formattedEducation?: string
+  fullName?: string
 }
 
-export default function CandidateDetailsPage({ params }: { params: { id: string } }) {
+export default function CandidateDetailsPage({
+  params,
+}: {
+  params: { id: string }
+}) {
   const router = useRouter()
   const candidateId = React.use(params).id
   const [candidate, setCandidate] = useState<Candidate | null>(null)
@@ -131,6 +216,12 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
     }
   }
 
+  // Function to format website URL properly
+  const formatWebsiteUrl = (url: string) => {
+    if (!url) return ""
+    return url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Applied":
@@ -160,21 +251,171 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
     }
   }
 
-  // Helper function to safely render education information
-  const renderEducation = (education: Education | string | undefined) => {
+  // Helper function to render education information
+  const renderEducation = (education: Education | string | Education[] | undefined) => {
     if (!education) return "Not available"
 
+    if (Array.isArray(education)) {
+      return education.map((edu, index) => (
+        <Card key={index} className="mb-3 bg-gray-50 dark:bg-gray-800">
+          <CardContent className="pt-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-medium">
+                  {typeof edu === "object" && edu !== null ? edu.degree : "Degree not specified"}
+                </h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {typeof edu === "object" && edu !== null ? edu.institution : "Institution not specified"}
+                </p>
+              </div>
+              {typeof edu === "object" && edu !== null && (
+                <Badge variant="outline">
+                  {edu.startYear || "N/A"} - {edu.endYear || "N/A"}
+                </Badge>
+              )}
+            </div>
+            {typeof edu === "object" && edu !== null && (
+              <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Level: </span>
+                  {edu.level || "N/A"}
+                </div>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Mode: </span>
+                  {edu.mode || "N/A"}
+                </div>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Percentage/CGPA: </span>
+                  {edu.percentage || "N/A"}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))
+    }
+
     if (typeof education === "string") {
-      return education
+      return <p>{education}</p>
     }
 
     // If education is an object, format it properly
-    try {
-      return `${education.degree} in ${education.institution} (${education.startYear}-${education.endYear})`
-    } catch (e) {
-      console.error("Error rendering education:", e)
-      return "Education information available but could not be displayed"
+    if (typeof education === "object" && education !== null) {
+      return (
+        <Card className="mb-3 bg-gray-50 dark:bg-gray-800">
+          <CardContent className="pt-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-medium">{education.degree || "Degree not specified"}</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {education.institution || "Institution not specified"}
+                </p>
+              </div>
+              <Badge variant="outline">
+                {education.startYear || "N/A"} - {education.endYear || "N/A"}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Level: </span>
+                {education.level || "N/A"}
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Mode: </span>
+                {education.mode || "N/A"}
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Percentage/CGPA: </span>
+                {education.percentage || "N/A"}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )
     }
+
+    return "Not available"
+  }
+
+  // Helper function to render certifications
+  const renderCertifications = (certifications: Certification[] | undefined) => {
+    if (!certifications || !Array.isArray(certifications)) {
+      // Handle case when certifications is a string or simple value
+      if (certifications && typeof certifications === "object") {
+        // Try to convert to array if it's an object but not an array
+        const certsArray = Object.values(certifications)
+        if (certsArray.length > 0) {
+          return renderCertificationsArray(certsArray as Certification[])
+        }
+      }
+      return "No certifications available"
+    }
+
+    return renderCertificationsArray(certifications)
+  }
+
+  // Helper function to render an array of certifications
+  const renderCertificationsArray = (certifications: Certification[] | any[]) => {
+    if (certifications.length === 0) return "No certifications added yet."
+
+    return certifications.map((cert, index) => {
+      // Handle simple string values in the array
+      if (typeof cert === "string") {
+        return (
+          <Card key={index} className="mb-3 bg-gray-50 dark:bg-gray-800">
+            <CardContent className="pt-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className="font-medium">{cert}</h4>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
+
+      // Handle certification objects
+      return (
+        <Card key={index} className="mb-3 bg-gray-50 dark:bg-gray-800">
+          <CardContent className="pt-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-medium">{cert.name || cert}</h4>
+                {cert.issuer && <p className="text-sm text-gray-500 dark:text-gray-400">{cert.issuer}</p>}
+              </div>
+              {cert.date && <Badge variant="outline">{formatDate(cert.date)}</Badge>}
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+              {cert.expiryDate && (
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Expiry Date: </span>
+                  {formatDate(cert.expiryDate)}
+                </div>
+              )}
+              {cert.credentialId && (
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Credential ID: </span>
+                  {cert.credentialId}
+                </div>
+              )}
+              {cert.credentialUrl && (
+                <div className="col-span-2">
+                  <span className="text-gray-500 dark:text-gray-400">Credential URL: </span>
+                  <a
+                    href={formatWebsiteUrl(cert.credentialUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline"
+                  >
+                    {cert.credentialUrl}
+                  </a>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )
+    })
   }
 
   if (isLoading) {
@@ -214,7 +455,7 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <Toaster position="top-center" />
       <EmployeeNavbar />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <Button variant="ghost" className="mb-6" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
@@ -226,10 +467,16 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center text-center">
                   <Avatar className="h-24 w-24 mb-4">
-                    <AvatarImage src={candidate.avatar || "/placeholder.svg?height=96&width=96"} alt={candidate.name} />
+                    <AvatarImage
+                      src={candidate.avatar || candidate.photographUrl || "/placeholder.svg?height=96&width=96"}
+                      alt={candidate.name}
+                    />
                     <AvatarFallback className="text-2xl">{candidate.name.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <h2 className="text-xl font-bold">{candidate.name}</h2>
+                  <h2 className="text-xl font-bold">
+                    {candidate.salutation ? `${candidate.salutation} ` : ""}
+                    {candidate.name}
+                  </h2>
                   <p className="text-gray-500 dark:text-gray-400 mb-2">{candidate.role}</p>
                   <Badge className={getStatusColor(candidate.status)}>{candidate.status}</Badge>
 
@@ -276,6 +523,15 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
                     </div>
                   </div>
                 )}
+                {candidate.alternativePhone && (
+                  <div className="flex items-start">
+                    <Phone className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-3 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Alternative Phone</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{candidate.alternativePhone}</p>
+                    </div>
+                  </div>
+                )}
                 {candidate.location && (
                   <div className="flex items-start">
                     <MapPin className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-3 mt-0.5" />
@@ -285,8 +541,73 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
                     </div>
                   </div>
                 )}
+                {(candidate.currentCity || candidate.currentState) && (
+                  <div className="flex items-start">
+                    <MapPin className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-3 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Current Location</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {candidate.currentCity}
+                        {candidate.currentState && `, ${candidate.currentState}`}
+                        {candidate.pincode && ` - ${candidate.pincode}`}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {candidate.linkedIn && (
+                  <div className="flex items-start">
+                    <Linkedin className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-3 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">LinkedIn</p>
+                      <a
+                        href={formatWebsiteUrl(candidate.linkedIn)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-500 hover:underline"
+                      >
+                        {candidate.linkedIn}
+                      </a>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
+
+            {candidate.availableAssets && candidate.availableAssets.length > 0 && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Available Assets</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {candidate.availableAssets.map((asset, index) => (
+                      <div key={index} className="flex items-center">
+                        <Laptop className="h-4 w-4 mr-2 text-gray-500" />
+                        <span>{asset.replace("_", "/")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {candidate.identityDocuments && candidate.identityDocuments.length > 0 && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Identity Documents</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {candidate.identityDocuments.map((doc, index) => (
+                      <div key={index} className="flex items-center">
+                        <CreditCard className="h-4 w-4 mr-2 text-gray-500" />
+                        <span>{doc.replace("_", " ")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="md:col-span-2 space-y-6">
@@ -308,8 +629,54 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Personal Information */}
                 <div>
-                  <h3 className="text-lg font-medium mb-2">Professional Summary</h3>
+                  <h3 className="text-lg font-medium mb-2 flex items-center">
+                    <User className="h-5 w-5 mr-2" />
+                    Personal Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Full Name</p>
+                      <p>
+                        {candidate.salutation ? `${candidate.salutation} ` : ""}
+                        {candidate.firstName || ""} {candidate.middleName || ""} {candidate.lastName || candidate.name}
+                      </p>
+                    </div>
+                    {candidate.gender && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Gender</p>
+                        <p>{candidate.gender}</p>
+                      </div>
+                    )}
+                    {candidate.dateOfBirth && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Date of Birth</p>
+                        <p>{formatDate(candidate.dateOfBirth)}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Applied Date</p>
+                      <p>{formatDate(candidate.appliedDate || candidate.createdAt)}</p>
+                    </div>
+                  </div>
+
+                  {candidate.profileOutline && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Profile Outline</p>
+                      <p className="whitespace-pre-line">{candidate.profileOutline}</p>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Professional Summary */}
+                <div>
+                  <h3 className="text-lg font-medium mb-2 flex items-center">
+                    <Briefcase className="h-5 w-5 mr-2" />
+                    Professional Summary
+                  </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Position</p>
@@ -321,54 +688,236 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
                         <p>{candidate.experience}</p>
                       </div>
                     )}
-                    {candidate.education && (
+                    {candidate.totalExperience && (
                       <div>
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Education</p>
-                        <p>{renderEducation(candidate.education)}</p>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Experience (years)</p>
+                        <p>{candidate.totalExperience}</p>
                       </div>
                     )}
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Applied Date</p>
-                      <p>{formatDate(candidate.appliedDate || candidate.createdAt)}</p>
-                    </div>
                   </div>
                 </div>
 
-                <Separator />
-
-                {candidate.skills && candidate.skills.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-medium mb-2">Skills</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {candidate.skills.map((skill, index) => (
-                        <Badge key={index} variant="secondary">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {candidate.resumeUrl && (
+                {/* Education */}
+                {candidate && candidate.education && (
                   <>
                     <Separator />
                     <div>
-                      <h3 className="text-lg font-medium mb-2">Resume</h3>
-                      <Button variant="outline" className="text-blue-600 dark:text-blue-400" asChild>
-                        <a href={candidate.resumeUrl} target="_blank" rel="noopener noreferrer">
-                          <FileText className="h-4 w-4 mr-2" />
-                          View Resume
-                        </a>
-                      </Button>
+                      <h3 className="text-lg font-medium mb-2 flex items-center">
+                        <GraduationCap className="h-5 w-5 mr-2" />
+                        Educational Qualifications
+                      </h3>
+                      <div className="space-y-2">{renderEducation(candidate.education)}</div>
                     </div>
                   </>
                 )}
 
+                {/* Certifications */}
+                <>
+                  <Separator />
+                  <div>
+                    <h3 className="text-lg font-medium mb-2 flex items-center">
+                      <Award className="h-5 w-5 mr-2" />
+                      Certifications
+                    </h3>
+                    <div className="space-y-2">{renderCertifications(candidate.certifications)}</div>
+                  </div>
+                </>
+
+                {/* Work Experience */}
+                {candidate.workExperience && candidate.workExperience.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-medium mb-2 flex items-center">
+                        <Briefcase className="h-5 w-5 mr-2" />
+                        Work Experience
+                      </h3>
+                      <div className="space-y-4">
+                        {candidate.workExperience.map((exp, index) => (
+                          <Card key={index} className="bg-gray-50 dark:bg-gray-800">
+                            <CardContent className="pt-4">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="font-medium">{exp.title}</h4>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    {exp.companyName} {exp.department && `- ${exp.department}`}
+                                  </p>
+                                </div>
+                                <Badge variant="outline">{exp.tenure}</Badge>
+                              </div>
+                              {exp.summary && (
+                                <div className="mt-2">
+                                  <p className="text-sm whitespace-pre-line">{exp.summary}</p>
+                                </div>
+                              )}
+                              <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                                {exp.currentSalary && (
+                                  <div>
+                                    <span className="text-gray-500 dark:text-gray-400">Current Salary: </span>
+                                    {exp.currentSalary}
+                                  </div>
+                                )}
+                                {exp.expectedSalary && (
+                                  <div>
+                                    <span className="text-gray-500 dark:text-gray-400">Expected Salary: </span>
+                                    {exp.expectedSalary}
+                                  </div>
+                                )}
+                                {exp.noticePeriod && (
+                                  <div>
+                                    <span className="text-gray-500 dark:text-gray-400">Notice Period: </span>
+                                    {exp.noticePeriod} days
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Shift Preference */}
+                {candidate.shiftPreference && candidate.shiftPreference.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-medium mb-2 flex items-center">
+                        <Clock className="h-5 w-5 mr-2" />
+                        Shift Preference
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {candidate.shiftPreference.map((shift, index) => (
+                          <Badge key={index} variant="outline">
+                            {shift}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Preferred Cities */}
+                {candidate.preferredCities && candidate.preferredCities.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-medium mb-2 flex items-center">
+                        <MapPin className="h-5 w-5 mr-2" />
+                        Preferred Cities
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {candidate.preferredCities.map((city, index) => (
+                          <Badge key={index} variant="outline">
+                            {city}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Skills */}
+                {candidate.skills && candidate.skills.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-medium mb-2 flex items-center">
+                        <FileCheck className="h-5 w-5 mr-2" />
+                        Skills
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {candidate.skills.map((skill, index) => (
+                          <Badge key={index} variant="secondary">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Portfolio & Social Links */}
+                {(candidate.portfolioLink || candidate.socialMediaLink) && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-medium mb-2 flex items-center">
+                        <LinkIcon className="h-5 w-5 mr-2" />
+                        Online Presence
+                      </h3>
+                      <div className="space-y-2">
+                        {candidate.portfolioLink && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Portfolio</p>
+                            <a
+                              href={formatWebsiteUrl(candidate.portfolioLink)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:underline"
+                            >
+                              {candidate.portfolioLink}
+                            </a>
+                          </div>
+                        )}
+                        {candidate.socialMediaLink && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Social Media</p>
+                            <a
+                              href={formatWebsiteUrl(candidate.socialMediaLink)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:underline"
+                            >
+                              {candidate.socialMediaLink}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Cover Letter */}
+                {candidate.coverLetter && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-medium mb-2 flex items-center">
+                        <MessageSquare className="h-5 w-5 mr-2" />
+                        Cover Letter
+                      </h3>
+                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                        <p className="whitespace-pre-line">{candidate.coverLetter}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Additional Information */}
+                {candidate.additionalInfo && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-medium mb-2 flex items-center">
+                        <Info className="h-5 w-5 mr-2" />
+                        Additional Information
+                      </h3>
+                      <p className="whitespace-pre-line">{candidate.additionalInfo}</p>
+                    </div>
+                  </>
+                )}
+
+                {/* Notes */}
                 {candidate.notes && (
                   <>
                     <Separator />
                     <div>
-                      <h3 className="text-lg font-medium mb-2">Notes</h3>
+                      <h3 className="text-lg font-medium mb-2 flex items-center">
+                        <MessageSquare className="h-5 w-5 mr-2" />
+                        Notes
+                      </h3>
                       <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line">{candidate.notes}</p>
                     </div>
                   </>
@@ -376,6 +925,72 @@ export default function CandidateDetailsPage({ params }: { params: { id: string 
               </CardContent>
             </Card>
 
+            {/* Documents and Media */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Documents & Media</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Resume */}
+                {candidate.resumeUrl && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-2 flex items-center">
+                      <FileText className="h-5 w-5 mr-2" />
+                      Resume
+                    </h3>
+                    <Button variant="outline" className="text-blue-600 dark:text-blue-400" asChild>
+                      <a href={candidate.resumeUrl} target="_blank" rel="noopener noreferrer">
+                        <FileText className="h-4 w-4 mr-2" />
+                        View Resume
+                      </a>
+                    </Button>
+                  </div>
+                )}
+
+                {/* Media Assets */}
+                {(candidate.videoResumeUrl || candidate.audioBiodataUrl || candidate.photographUrl) && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium mb-2">Candidate Assets</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {candidate.videoResumeUrl && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Video Resume</p>
+                          <div className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-md overflow-hidden">
+                            <video src={candidate.videoResumeUrl} controls className="w-full h-full object-contain">
+                              Your browser does not support the video tag.
+                            </video>
+                          </div>
+                        </div>
+                      )}
+
+                      {candidate.audioBiodataUrl && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Audio Biodata</p>
+                          <audio src={candidate.audioBiodataUrl} controls className="w-full">
+                            Your browser does not support the audio tag.
+                          </audio>
+                        </div>
+                      )}
+
+                      {candidate.photographUrl && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Photograph</p>
+                          <div className="rounded-md overflow-hidden border dark:border-gray-700">
+                            <img
+                              src={candidate.photographUrl || "/placeholder.svg"}
+                              alt={`${candidate.name}'s photograph`}
+                              className="w-full h-auto object-contain"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Interview History */}
             <Card>
               <CardHeader>
                 <CardTitle>Interview History</CardTitle>

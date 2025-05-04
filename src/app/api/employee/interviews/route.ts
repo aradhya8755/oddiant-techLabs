@@ -88,6 +88,15 @@ export async function POST(request: NextRequest) {
 
     const result = await db.collection("interviews").insertOne(newInterview)
 
+    // If jobId is provided, update the job's interview count
+    // This was in the previous code but missing in the new version
+    if (jobId) {
+      await db.collection("jobs").updateOne(
+        { _id: new ObjectId(jobId) }, 
+        { $inc: { interviews: 1 } }
+      )
+    }
+
     // Send email notification to candidate
     try {
       await sendEmail({

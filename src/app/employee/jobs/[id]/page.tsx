@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { use } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Briefcase, MapPin, Clock, Users, Edit, Trash2, Share2, Copy } from "lucide-react"
+import { ArrowLeft, Briefcase, MapPin, Clock, Users, Edit, Trash2, Share2, Copy, Building } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -34,6 +34,7 @@ interface JobPosting {
   jobDescription: string
   educationalPreference: string
   shiftPreference: string[]
+  genderPreference: string[]
   assetsRequirement: {
     wifi: boolean
     laptop: boolean
@@ -67,7 +68,16 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
     const fetchJob = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch(`/api/employee/jobs/${jobId}`)
+        // Add a cache-busting query parameter to prevent caching
+        const timestamp = new Date().getTime()
+        const response = await fetch(`/api/employee/jobs/${jobId}?t=${timestamp}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        })
 
         if (!response.ok) {
           throw new Error("Failed to fetch job details")
@@ -84,6 +94,12 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
     }
 
     fetchJob()
+
+    // Set up an interval to refresh the data every 30 seconds
+    const intervalId = setInterval(fetchJob, 30000)
+
+    // Clean up the interval when the component unmounts
+    return () => clearInterval(intervalId)
   }, [jobId])
 
   const handleDeleteJob = async () => {
@@ -94,14 +110,15 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
       })
 
       if (!response.ok) {
-        throw new Error("Failed to delete job posting")
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to delete job posting")
       }
 
       toast.success("Job posting deleted successfully")
       router.push("/employee/dashboard?tab=jobs")
     } catch (error) {
       console.error("Error deleting job posting:", error)
-      toast.error("Failed to delete job posting")
+      toast.error(`Failed to delete job posting: ${error.message}`)
     } finally {
       setIsDeleting(false)
       setShowDeleteDialog(false)
@@ -156,6 +173,12 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
     } finally {
       setIsUpdatingStatus(false)
     }
+  }
+
+  // Function to format website URL properly
+  const formatWebsiteUrl = (url: string) => {
+    if (!url) return ""
+    return url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`
   }
 
   const getStatusColor = (status: string) => {
@@ -257,7 +280,7 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
                 </select>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex flex-wrap gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex items-center">
                     <MapPin className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
                     <span>{job.jobLocation}</span>
@@ -268,18 +291,23 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
                   </div>
                   <div className="flex items-center">
                     <Clock className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
-                    <span>{job.experienceRange} years</span>
+                    <span>{job.experienceRange}</span>
                   </div>
-                  {job.department && (
-                    <div className="flex items-center">
-                      <Users className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
-                      <span>{job.department}</span>
-                    </div>
-                  )}
+                  {/* Department field - explicitly displayed */}
+                  <div className="flex items-center">
+                    <Building className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                    <span>{job.department || "Not specified"}</span>
+                  </div>
                   {job.salaryRange && (
                     <div className="flex items-center">
                       <span className="font-medium mr-2">Salary:</span>
                       <span>{job.salaryRange}</span>
+                    </div>
+                  )}
+                  {job.industry && (
+                    <div className="flex items-center">
+                      <span className="font-medium mr-2">Industry:</span>
+                      <span>{job.industry}</span>
                     </div>
                   )}
                 </div>
@@ -317,15 +345,21 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
                       <p>
                         {job.educationalPreference === "high_school"
                           ? "High School"
-                          : job.educationalPreference === "associates"
-                            ? "Associate's Degree"
+                          : job.educationalPreference === "intermediate"
+                            ? "Intermediate"
                             : job.educationalPreference === "bachelors"
                               ? "Bachelor's Degree"
                               : job.educationalPreference === "masters"
                                 ? "Master's Degree"
                                 : job.educationalPreference === "phd"
                                   ? "PhD"
-                                  : "No specific educational requirements"}
+                                  : job.educationalPreference === "diploma"
+                                    ? "Diploma"
+                                    : job.educationalPreference === "certificate"
+                                      ? "Certificate"
+                                      : job.educationalPreference === "none"
+                                        ? "No Specific Educational Requirements"
+                                        : job.educationalPreference}
                       </p>
                     </div>
                   </>
@@ -340,6 +374,24 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
                         {job.shiftPreference.map((shift, index) => (
                           <Badge key={index} variant="outline">
                             {shift.charAt(0).toUpperCase() + shift.slice(1)}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {job.genderPreference && job.genderPreference.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Gender Preference</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {job.genderPreference.map((gender, index) => (
+                          <Badge key={index} variant="outline">
+                            {gender === "no_preference"
+                              ? "No Preference"
+                              : gender.charAt(0).toUpperCase() + gender.slice(1)}
                           </Badge>
                         ))}
                       </div>
@@ -384,23 +436,36 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
               </CardContent>
             </Card>
 
-            {job.aboutCompany && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>About the Company</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="whitespace-pre-line">{job.aboutCompany}</p>
-                  {job.websiteLink && (
-                    <Button variant="link" className="p-0 h-auto mt-2" asChild>
-                      <a href={job.websiteLink} target="_blank" rel="noopener noreferrer">
-                        Visit Website
+            {/* Company Information Card - Always display this card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Company Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="text-md font-medium mb-1">Company Name</h3>
+                  <p>{job.companyName || "Not specified"}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-md font-medium mb-1">About Company</h3>
+                  <p className="whitespace-pre-line">{job.aboutCompany || "No company description provided"}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-md font-medium mb-1">Website</h3>
+                  {job.websiteLink ? (
+                    <Button variant="link" className="p-0 h-auto text-blue-700" asChild>
+                      <a href={formatWebsiteUrl(job.websiteLink)} target="_blank" rel="noopener noreferrer">
+                        {job.websiteLink} &rarr;
                       </a>
                     </Button>
+                  ) : (
+                    <p>No website provided</p>
                   )}
-                </CardContent>
-              </Card>
-            )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="space-y-6">

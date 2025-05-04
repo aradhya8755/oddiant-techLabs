@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { use } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Briefcase, MapPin, Clock, Calendar, ArrowLeft } from "lucide-react"
+import { ArrowLeft, Briefcase, MapPin, Clock, Calendar, Share2, Building, GraduationCap, Users } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { use } from "react"
 
 interface JobPosting {
   _id: string
@@ -23,6 +23,7 @@ interface JobPosting {
   jobDescription: string
   educationalPreference: string
   shiftPreference: string[]
+  genderPreference: string[]
   assetsRequirement: {
     wifi: boolean
     laptop: boolean
@@ -31,6 +32,12 @@ interface JobPosting {
   companyName: string
   aboutCompany: string
   websiteLink: string
+  questions: string[]
+  answers: string[]
+  status: "open" | "hold" | "closed"
+  applicants: number
+  interviews: number
+  daysLeft: number
   createdAt: string
 }
 
@@ -45,10 +52,22 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
     const fetchJob = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch(`/api/jobs/${jobId}`)
+        // Add cache-busting parameter to prevent caching
+        const timestamp = new Date().getTime()
+        const response = await fetch(`/api/jobs/${jobId}?t=${timestamp}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        })
 
         if (!response.ok) {
-          throw new Error("Failed to fetch job details")
+          // Handle the case where the job is not found
+          toast.error("This job is no longer available or has been removed.")
+          router.push("/") // Redirect to home or jobs listing page
+          return // Exit the function to prevent further execution
         }
 
         const data = await response.json()
@@ -62,12 +81,24 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
     }
 
     fetchJob()
-  }, [jobId])
+  }, [jobId, router])
 
   const handleApply = () => {
     setIsApplying(true)
     // Redirect to application form
     router.push(`/jobs/${jobId}/apply`)
+  }
+
+  const handleShareJob = () => {
+    const jobUrl = `${window.location.origin}/jobs/${jobId}`
+    navigator.clipboard.writeText(jobUrl)
+    toast.success("Job URL copied to clipboard")
+  }
+
+  // Function to format website URL properly
+  const formatWebsiteUrl = (url: string) => {
+    if (!url) return ""
+    return url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`
   }
 
   if (isLoading) {
@@ -82,10 +113,10 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* <Button variant="ghost" className="mb-6" onClick={() => router.push("/employee/dashboard?tab=overview")}>
+          <Button variant="ghost" className="mb-6" onClick={() => router.push("/")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Job
-          </Button> */}
+            Back to Home
+          </Button>
 
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -100,6 +131,20 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
         </div>
       </div>
     )
+  }
+
+  // Format status for display
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "open":
+        return "success"
+      case "hold":
+        return "warning"
+      case "closed":
+        return "destructive"
+      default:
+        return "secondary"
+    }
   }
 
   return (
@@ -117,16 +162,23 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
               <CardHeader>
                 <CardTitle className="text-2xl">{job.jobTitle}</CardTitle>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  <Badge variant="outline" className="text-sm">
-                    {job.companyName}
-                  </Badge>
+                  {job.companyName && (
+                    <Badge variant="outline" className="text-sm">
+                      {job.companyName}
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="text-sm">
                     Posted on {new Date(job.createdAt).toLocaleDateString()}
                   </Badge>
+                  {job.status && (
+                    <Badge variant={getStatusBadgeVariant(job.status)} className="text-sm">
+                      {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                    </Badge>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex flex-wrap gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex items-center">
                     <MapPin className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
                     <span>{job.jobLocation}</span>
@@ -137,11 +189,12 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
                   </div>
                   <div className="flex items-center">
                     <Clock className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
-                    <span>{job.experienceRange} years</span>
+                    <span>{job.experienceRange}</span>
                   </div>
+                  {/* Department field - explicitly displayed */}
                   {job.department && (
                     <div className="flex items-center">
-                      <span className="font-medium mr-2">Department:</span>
+                      <Building className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
                       <span>{job.department}</span>
                     </div>
                   )}
@@ -149,6 +202,12 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
                     <div className="flex items-center">
                       <span className="font-medium mr-2">Salary:</span>
                       <span>{job.salaryRange}</span>
+                    </div>
+                  )}
+                  {job.industry && (
+                    <div className="flex items-center">
+                      <span className="font-medium mr-2">Industry:</span>
+                      <span>{job.industry}</span>
                     </div>
                   )}
                 </div>
@@ -183,19 +242,28 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
                     <Separator />
                     <div>
                       <h3 className="text-lg font-medium mb-3">Educational Requirements</h3>
-                      <p>
-                        {job.educationalPreference === "high_school"
-                          ? "High School"
-                          : job.educationalPreference === "associates"
-                            ? "Associate's Degree"
-                            : job.educationalPreference === "bachelors"
-                              ? "Bachelor's Degree"
-                              : job.educationalPreference === "masters"
-                                ? "Master's Degree"
-                                : job.educationalPreference === "phd"
-                                  ? "PhD"
-                                  : "No specific educational requirements"}
-                      </p>
+                      <div className="flex items-center">
+                        <GraduationCap className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                        <span>
+                          {job.educationalPreference === "high_school"
+                            ? "High School"
+                            : job.educationalPreference === "intermediate"
+                              ? "Intermediate"
+                              : job.educationalPreference === "bachelors"
+                                ? "Bachelor's Degree"
+                                : job.educationalPreference === "masters"
+                                  ? "Master's Degree"
+                                  : job.educationalPreference === "phd"
+                                    ? "PhD"
+                                    : job.educationalPreference === "diploma"
+                                      ? "Diploma"
+                                      : job.educationalPreference === "certificate"
+                                        ? "Certificate"
+                                        : job.educationalPreference === "none"
+                                          ? "No Specific Educational Requirements"
+                                          : job.educationalPreference}
+                        </span>
+                      </div>
                     </div>
                   </>
                 )}
@@ -216,6 +284,27 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
                   </>
                 )}
 
+                {job.genderPreference && job.genderPreference.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Gender Preference</h3>
+                      <div className="flex items-center">
+                        <Users className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                        <div className="flex flex-wrap gap-2">
+                          {job.genderPreference.map((gender, index) => (
+                            <Badge key={index} variant="outline">
+                              {gender === "no_preference"
+                                ? "No Preference"
+                                : gender.charAt(0).toUpperCase() + gender.slice(1)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 {(job.assetsRequirement?.wifi || job.assetsRequirement?.laptop || job.assetsRequirement?.vehicle) && (
                   <>
                     <Separator />
@@ -229,36 +318,72 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
                     </div>
                   </>
                 )}
+
+                {job.questions && job.questions.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Screening Questions</h3>
+                      <div className="space-y-3">
+                        {job.questions.map((question, index) => (
+                          <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                            <p className="font-medium">
+                              Q{index + 1}: {question}
+                            </p>
+                            {job.answers && job.answers[index] && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                <span className="font-medium">Expected answer:</span> {job.answers[index]}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
-            {job.aboutCompany && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>About {job.companyName}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="whitespace-pre-line">{job.aboutCompany}</p>
-                  {job.websiteLink && (
-                    <Button variant="link" className="p-0 h-auto mt-2" asChild>
-                      <a href={job.websiteLink} target="_blank" rel="noopener noreferrer">
-                        Visit Website
+            {/* Company Information Card - Always display this card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>About {job.companyName || "Company"}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {job.aboutCompany && (
+                  <div>
+                    <p className="whitespace-pre-line">{job.aboutCompany}</p>
+                  </div>
+                )}
+                {job.websiteLink && (
+                  <div>
+                    <Button variant="link" className="p-0 h-auto text-blue-700" asChild>
+                      <a href={formatWebsiteUrl(job.websiteLink)} target="_blank" rel="noopener noreferrer">
+                        Visit Website &rarr;
                       </a>
                     </Button>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                  </div>
+                )}
+                {!job.aboutCompany && !job.websiteLink && (
+                  <p className="text-gray-500 dark:text-gray-400">No company information provided</p>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Apply Now</CardTitle>
+                {job.status !== "open" && (
+                  <CardDescription className="text-amber-500">
+                    This job is currently {job.status}. Applications may not be accepted at this time.
+                  </CardDescription>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <p>Interested in this position? Submit your application now.</p>
-                <Button className="w-full" onClick={handleApply} disabled={isApplying}>
+                <Button className="w-full" onClick={handleApply} disabled={isApplying || job.status !== "open"}>
                   {isApplying ? (
                     <>
                       <div className="animate-spin mr-2 h-4 w-4 border-2 border-t-transparent border-white rounded-full"></div>
@@ -276,6 +401,11 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
                     <Calendar className="h-4 w-4 inline-block mr-1" />
                     Posted on {new Date(job.createdAt).toLocaleDateString()}
                   </p>
+                  {job.daysLeft !== undefined && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {job.daysLeft > 0 ? `${job.daysLeft} days left to apply` : "Application deadline has passed"}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -285,14 +415,8 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
                 <CardTitle>Share This Job</CardTitle>
               </CardHeader>
               <CardContent>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    navigator.clipboard.writeText(window.location.href)
-                    toast.success("Job URL copied to clipboard")
-                  }}
-                >
+                <Button variant="outline" className="w-full" onClick={handleShareJob}>
+                  <Share2 className="h-4 w-4 mr-2" />
                   Copy Job Link
                 </Button>
               </CardContent>

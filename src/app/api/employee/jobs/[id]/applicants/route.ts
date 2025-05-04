@@ -25,16 +25,47 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Find all candidates who have applied to this job
-    // In a real implementation, you would have a job_applications collection
-    // For now, we'll simulate by returning candidates with a matching role
-    const applicants = await db
-      .collection("candidates")
-      .find({
-        $or: [{ jobId: new ObjectId(jobId) }, { jobId: jobId }, { role: { $regex: new RegExp(job.jobTitle, "i") } }],
-      })
+    // First, get all applications for this job
+    const applications = await db
+      .collection("job_applications")
+      .find({ jobId: new ObjectId(jobId) })
       .toArray()
 
-    return NextResponse.json({ success: true, applicants }, { status: 200 })
+    // Extract candidate IDs from applications
+    const candidateIds = applications.map((app) => app.candidateId)
+
+    // Find all candidates with these IDs
+    let applicants = []
+    if (candidateIds.length > 0) {
+      applicants = await db
+        .collection("candidates")
+        .find({ _id: { $in: candidateIds } })
+        .toArray()
+    }
+
+    // If no direct applications found, fall back to the previous approach
+    if (applicants.length === 0) {
+      applicants = await db
+        .collection("candidates")
+        .find({
+          $or: [{ jobId: new ObjectId(jobId) }, { jobId: jobId }, { role: { $regex: new RegExp(job.jobTitle, "i") } }],
+        })
+        .toArray()
+    }
+
+    // Add cache control headers to prevent caching
+    const headers = new Headers()
+    headers.append("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+    headers.append("Pragma", "no-cache")
+    headers.append("Expires", "0")
+
+    return NextResponse.json(
+      { success: true, applicants },
+      {
+        status: 200,
+        headers: headers,
+      },
+    )
   } catch (error) {
     console.error("Error fetching job applicants:", error)
     return NextResponse.json({ success: false, message: "Failed to fetch applicants" }, { status: 500 })

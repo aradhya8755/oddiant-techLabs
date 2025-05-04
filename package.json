@@ -50,7 +50,8 @@
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "twilio": "^5.5.2",
-    "typed.js": "^2.1.0"
+    "typed.js": "^2.1.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",

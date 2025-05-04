@@ -1,12 +1,24 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast, Toaster } from "sonner"
-import { User, Briefcase, Settings, LogOut, Users, BarChart, Calendar, Clock, PlusCircle, Search } from "lucide-react"
+import {
+  User,
+  Briefcase,
+  Settings,
+  LogOut,
+  Users,
+  BarChart,
+  Calendar,
+  Clock,
+  PlusCircle,
+  Search,
+  RefreshCw,
+} from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -52,6 +64,7 @@ interface JobPosting {
   daysLeft?: number
   interviews?: number
   createdAt: string
+  updatedAt?: string
 }
 
 interface Interview {
@@ -60,6 +73,7 @@ interface Interview {
   position: string
   date: string
   time: string
+  jobId?: string
 }
 
 export default function EmployeeDashboard() {
@@ -100,6 +114,8 @@ export default function EmployeeDashboard() {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastRefreshed, setLastRefreshed] = useState(new Date())
 
   // Effect to update the URL when tab changes
   useEffect(() => {
@@ -107,6 +123,164 @@ export default function EmployeeDashboard() {
       router.push(`/employee/dashboard?tab=${activeTab}`, { scroll: false })
     }
   }, [activeTab, router, tabParam])
+
+  // Memoized fetch functions to avoid recreating them on every render
+  const fetchCandidates = useCallback(async () => {
+    try {
+      const response = await fetch("/api/employee/candidates")
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch candidates")
+      }
+
+      const data = await response.json()
+
+      // Format the data
+      const formattedCandidates = data.candidates.map((candidate: any) => ({
+        _id: candidate._id,
+        name: candidate.name,
+        email: candidate.email,
+        role: candidate.role,
+        status: candidate.status,
+        avatar: candidate.avatar || "/placeholder.svg?height=40&width=40",
+        appliedDate: new Date(candidate.createdAt).toLocaleDateString(),
+      }))
+
+      setCandidates(formattedCandidates)
+
+      // Update dashboard stats
+      setDashboardStats((prev) => ({
+        ...prev,
+        activeCandidate: formattedCandidates.length,
+      }))
+    } catch (error) {
+      console.error("Error fetching candidates:", error)
+      toast.error("Failed to load candidates")
+    }
+  }, [])
+
+  const fetchJobPostings = useCallback(async () => {
+    try {
+      const response = await fetch("/api/employee/jobs", {
+        // Add cache busting parameter to prevent caching
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch job postings")
+      }
+
+      const data = await response.json()
+
+      // Format the data
+      const formattedJobs = data.jobs.map((job: any) => {
+        // Calculate days left based on job duration or default to 30 days
+        const createdDate = new Date(job.createdAt)
+        const durationDays = job.duration || 30
+        const expiryDate = new Date(createdDate)
+        expiryDate.setDate(createdDate.getDate() + durationDays)
+
+        const today = new Date()
+        const daysLeft = Math.max(0, Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+
+        return {
+          _id: job._id,
+          jobTitle: job.jobTitle,
+          department: job.department,
+          jobType: job.jobType,
+          jobLocation: job.jobLocation,
+          applicants: job.applicants || 0,
+          daysLeft: daysLeft,
+          interviews: job.interviews || 0,
+          createdAt: new Date(job.createdAt).toLocaleDateString(),
+          updatedAt: job.updatedAt ? new Date(job.updatedAt).toISOString() : undefined,
+        }
+      })
+
+      setJobPostings(formattedJobs)
+
+      // Update dashboard stats
+      setDashboardStats((prev) => ({
+        ...prev,
+        openPositions: formattedJobs.length,
+      }))
+    } catch (error) {
+      console.error("Error fetching job postings:", error)
+      toast.error("Failed to load job postings")
+    }
+  }, [])
+
+  const fetchInterviews = useCallback(async () => {
+    try {
+      const response = await fetch("/api/employee/interviews", {
+        // Add cache busting parameter to prevent caching
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch interviews")
+      }
+
+      const data = await response.json()
+
+      // Format the data
+      const formattedInterviews = data.interviews.map((interview: any) => {
+        const interviewDate = new Date(interview.date)
+        return {
+          _id: interview._id,
+          candidate: interview.candidate,
+          position: interview.position,
+          date: interviewDate.toLocaleDateString(),
+          time: interview.time,
+          jobId: interview.jobId || undefined,
+        }
+      })
+
+      setInterviews(formattedInterviews)
+
+      // Count today's interviews
+      const today = new Date().toDateString()
+      const todayInterviews = data.interviews.filter(
+        (interview: any) => new Date(interview.date).toDateString() === today,
+      ).length
+
+      // Update dashboard stats
+      setDashboardStats((prev) => ({
+        ...prev,
+        interviewsToday: todayInterviews,
+        hiringRate: 78, // Default value, could be calculated based on actual data
+      }))
+
+      // Update job postings with interview counts
+      updateJobPostingsWithInterviewCounts(formattedInterviews)
+    } catch (error) {
+      console.error("Error fetching interviews:", error)
+      toast.error("Failed to load interviews")
+    }
+  }, [])
+
+  // Update job postings with interview counts
+  const updateJobPostingsWithInterviewCounts = useCallback((interviewsData: Interview[]) => {
+    setJobPostings((prevJobs) => {
+      return prevJobs.map((job) => {
+        // Count interviews for this job
+        const jobInterviews = interviewsData.filter(
+          (interview) => interview.jobId === job._id || interview.position.includes(job.jobTitle),
+        ).length
+
+        return {
+          ...job,
+          interviews: jobInterviews,
+        }
+      })
+    })
+  }, [])
 
   // Effect to fetch employee data on mount
   useEffect(() => {
@@ -141,9 +315,7 @@ export default function EmployeeDashboard() {
         }
 
         // Fetch additional data
-        fetchCandidates()
-        fetchJobPostings()
-        fetchInterviews()
+        await Promise.all([fetchCandidates(), fetchJobPostings(), fetchInterviews()])
       } catch (error) {
         toast.error("Error loading profile data")
         console.error(error)
@@ -153,117 +325,48 @@ export default function EmployeeDashboard() {
     }
 
     fetchEmployeeData()
-  }, [router])
 
-  const fetchCandidates = async () => {
-    try {
-      const response = await fetch("/api/employee/candidates")
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch candidates")
+    // Set up polling for real-time updates
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        refreshData(false)
       }
+    }, 30000) // Poll every 30 seconds
 
-      const data = await response.json()
+    return () => clearInterval(intervalId)
+  }, [router, fetchCandidates, fetchJobPostings, fetchInterviews])
 
-      // Format the data
-      const formattedCandidates = data.candidates.map((candidate: any) => ({
-        _id: candidate._id,
-        name: candidate.name,
-        email: candidate.email,
-        role: candidate.role,
-        status: candidate.status,
-        avatar: candidate.avatar || "/placeholder.svg?height=40&width=40",
-        appliedDate: new Date(candidate.createdAt).toLocaleDateString(),
-      }))
+  // Effect to update job postings with interview counts whenever interviews change
+  useEffect(() => {
+    updateJobPostingsWithInterviewCounts(interviews)
+  }, [interviews, updateJobPostingsWithInterviewCounts])
 
-      setCandidates(formattedCandidates)
-
-      // Update dashboard stats
-      setDashboardStats((prev) => ({
-        ...prev,
-        activeCandidate: formattedCandidates.length,
-      }))
-    } catch (error) {
-      console.error("Error fetching candidates:", error)
-      toast.error("Failed to load candidates")
+  // Effect to refresh data when tab changes
+  useEffect(() => {
+    if (activeTab === "jobs" || activeTab === "interviews") {
+      refreshData(false)
     }
-  }
+  }, [activeTab])
 
-  const fetchJobPostings = async () => {
+  // Function to refresh all data
+  const refreshData = async (showToast = true) => {
     try {
-      const response = await fetch("/api/employee/jobs")
+      setIsRefreshing(true)
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch job postings")
+      await Promise.all([fetchCandidates(), fetchJobPostings(), fetchInterviews()])
+
+      setLastRefreshed(new Date())
+
+      if (showToast) {
+        toast.success("Data refreshed successfully")
       }
-
-      const data = await response.json()
-
-      // Format the data
-      const formattedJobs = data.jobs.map((job: any) => ({
-        _id: job._id,
-        jobTitle: job.jobTitle,
-        department: job.department,
-        jobType: job.jobType,
-        jobLocation: job.jobLocation,
-        applicants: job.applicants || 0,
-        daysLeft: 30, // Default to 30 days
-        interviews: job.interviews || 0,
-        createdAt: new Date(job.createdAt).toLocaleDateString(),
-      }))
-
-      setJobPostings(formattedJobs)
-
-      // Update dashboard stats
-      setDashboardStats((prev) => ({
-        ...prev,
-        openPositions: formattedJobs.length,
-      }))
     } catch (error) {
-      console.error("Error fetching job postings:", error)
-      toast.error("Failed to load job postings")
-    }
-  }
-
-  const fetchInterviews = async () => {
-    try {
-      const response = await fetch("/api/employee/interviews")
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch interviews")
+      console.error("Error refreshing data:", error)
+      if (showToast) {
+        toast.error("Failed to refresh data")
       }
-
-      const data = await response.json()
-
-      // Format the data
-      const formattedInterviews = data.interviews.map((interview: any) => {
-        const interviewDate = new Date(interview.date)
-        return {
-          _id: interview._id,
-          candidate: interview.candidate,
-          position: interview.position,
-          date: interviewDate.toLocaleDateString(),
-          time: interview.time,
-        }
-      })
-
-      setInterviews(formattedInterviews)
-
-      // Count today's interviews
-      const today = new Date().toDateString()
-      const todayInterviews = data.interviews.filter(
-        (interview: any) => new Date(interview.date).toDateString() === today,
-      ).length
-
-      // Update dashboard stats
-      setDashboardStats((prev) => ({
-        ...prev,
-        interviewsToday: todayInterviews,
-        hiringRate: 78, // Default value, could be calculated based on actual data
-      }))
-    } catch (error) {
-      console.error("Error fetching interviews:", error)
-      toast.error("Failed to load interviews")
+    } finally {
+      setIsRefreshing(false)
     }
   }
 
@@ -446,7 +549,7 @@ export default function EmployeeDashboard() {
       toast.success("Job posting created successfully!")
 
       // Refresh job postings
-      fetchJobPostings()
+      await fetchJobPostings()
 
       // Switch to jobs tab
       setActiveTab("jobs")
@@ -552,6 +655,19 @@ export default function EmployeeDashboard() {
               <p className="text-sm opacity-80">Hiring Success Rate</p>
             </CardContent>
           </Card>
+        </div>
+
+        <div className="flex justify-end mb-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refreshData(true)}
+            disabled={isRefreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            {isRefreshing ? "Refreshing..." : "Refresh Data"}
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
