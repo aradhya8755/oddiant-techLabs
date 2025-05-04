@@ -4,12 +4,13 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Search, Calendar } from "lucide-react"
+import { ArrowLeft, Search, Calendar, Download } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ApplicantStatus } from "@/components/candidates/applicant-status"
 import { EmployeeNavbar } from "@/components/layout/employee-navbar"
+import { Checkbox } from "@/components/ui/checkbox"
 import { use } from "react"
 
 interface Applicant {
@@ -37,6 +38,8 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
   const [applicants, setApplicants] = useState<Applicant[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [selectedApplicants, setSelectedApplicants] = useState<string[]>([])
+  const [isDownloading, setIsDownloading] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,6 +78,76 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
       applicant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       applicant.role.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const handleSelectApplicant = (applicantId: string) => {
+    setSelectedApplicants((prev) => {
+      if (prev.includes(applicantId)) {
+        return prev.filter((id) => id !== applicantId)
+      } else {
+        return [...prev, applicantId]
+      }
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (selectedApplicants.length === filteredApplicants.length) {
+      // If all are selected, deselect all
+      setSelectedApplicants([])
+    } else {
+      // Otherwise, select all
+      setSelectedApplicants(filteredApplicants.map((applicant) => applicant._id))
+    }
+  }
+
+  const downloadExcel = async () => {
+    if (selectedApplicants.length === 0) {
+      toast.error("Please select at least one applicant")
+      return
+    }
+
+    try {
+      setIsDownloading(true)
+      toast.info("Preparing Excel file for download...")
+
+      const response = await fetch(`/api/employee/jobs/${jobId}/applicants/download`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          applicantIds: selectedApplicants,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to download applicants data")
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob()
+
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob)
+
+      // Create a temporary link element
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `applicants-${job?.jobTitle || jobId}-${new Date().toISOString().split("T")[0]}.xlsx`
+
+      // Append to the document, click it, and remove it
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success(`Successfully downloaded data for ${selectedApplicants.length} applicant(s)`)
+    } catch (error) {
+      console.error("Error downloading applicants data:", error)
+      toast.error("Failed to download applicants data")
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -125,23 +198,48 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
                 <CardTitle>Applicants for {job.jobTitle}</CardTitle>
                 <CardDescription>
                   {filteredApplicants.length} {filteredApplicants.length === 1 ? "applicant" : "applicants"} found
+                  {selectedApplicants.length > 0 && ` (${selectedApplicants.length} selected)`}
                 </CardDescription>
               </div>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                <Input
-                  placeholder="Search applicants..."
-                  className="pl-8 w-[250px]"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={downloadExcel}
+                  disabled={isDownloading || selectedApplicants.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  {isDownloading ? "Downloading..." : "Download in Excel"}
+                </Button>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <Input
+                    placeholder="Search applicants..."
+                    className="pl-8 w-[250px]"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             {filteredApplicants.length > 0 ? (
               <div className="rounded-md border dark:border-gray-700">
-                <div className="grid grid-cols-7 bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+                <div className="grid grid-cols-8 bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center">
+                    <Checkbox
+                      id="select-all"
+                      checked={selectedApplicants.length === filteredApplicants.length && filteredApplicants.length > 0}
+                      onCheckedChange={handleSelectAll}
+                      className="mr-2"
+                    />
+                    <label htmlFor="select-all" className="text-xs cursor-pointer">
+                      {selectedApplicants.length === filteredApplicants.length && filteredApplicants.length > 0
+                        ? "Deselect All"
+                        : "Select All"}
+                    </label>
+                  </div>
                   <div className="col-span-2">Applicant</div>
                   <div>Status</div>
                   <div>Applied Date</div>
@@ -150,7 +248,14 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
                 </div>
 
                 {filteredApplicants.map((applicant) => (
-                  <div key={applicant._id} className="grid grid-cols-7 border-t dark:border-gray-700 p-3 items-center">
+                  <div key={applicant._id} className="grid grid-cols-8 border-t dark:border-gray-700 p-3 items-center">
+                    <div className="flex items-center">
+                      <Checkbox
+                        id={`select-${applicant._id}`}
+                        checked={selectedApplicants.includes(applicant._id)}
+                        onCheckedChange={() => handleSelectApplicant(applicant._id)}
+                      />
+                    </div>
                     <div className="col-span-2 flex items-center">
                       <Avatar className="h-8 w-8 mr-2">
                         <AvatarImage
