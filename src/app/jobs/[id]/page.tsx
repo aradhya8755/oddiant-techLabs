@@ -5,7 +5,18 @@ import { useRouter } from "next/navigation"
 import { use } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Briefcase, MapPin, Clock, Calendar, Share2, Building, GraduationCap, Users } from "lucide-react"
+import {
+  ArrowLeft,
+  Briefcase,
+  MapPin,
+  Clock,
+  Calendar,
+  Clipboard,
+  Building,
+  GraduationCap,
+  Users,
+  FileText,
+} from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -95,6 +106,11 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
     toast.success("Job URL copied to clipboard")
   }
 
+  const handleCopyJobId = () => {
+    navigator.clipboard.writeText(jobId)
+    toast.success("Job ID copied to clipboard")
+  }
+
   // Function to format website URL properly
   const formatWebsiteUrl = (url: string) => {
     if (!url) return ""
@@ -161,6 +177,19 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">{job.jobTitle}</CardTitle>
+                <div className="flex items-center mt-1">
+                  <FileText className="h-4 w-4 mr-1 text-gray-500" />
+                  <span className="text-sm text-gray-500">Job ID: {jobId}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 ml-1"
+                    onClick={handleCopyJobId}
+                    title="Copy Job ID"
+                  >
+                    <Clipboard className="h-3 w-3" />
+                  </Button>
+                </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {job.companyName && (
                     <Badge variant="outline" className="text-sm">
@@ -180,34 +209,38 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex items-center">
-                    <MapPin className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                    <MapPin className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
                     <span>{job.jobLocation}</span>
                   </div>
                   <div className="flex items-center">
-                    <Briefcase className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                    <Briefcase className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
                     <span>{job.jobType}</span>
                   </div>
                   <div className="flex items-center">
-                    <Clock className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                    <Clock className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
                     <span>{job.experienceRange}</span>
                   </div>
                   {/* Department field - explicitly displayed */}
                   {job.department && (
                     <div className="flex items-center">
-                      <Building className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                      <Building className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
                       <span>{job.department}</span>
                     </div>
                   )}
+                </div>
+
+                {/* Salary and Industry in their own row with proper wrapping */}
+                <div className="grid grid-cols-1 gap-4 mt-4">
                   {job.salaryRange && (
-                    <div className="flex items-center">
-                      <span className="font-medium mr-2">Salary:</span>
-                      <span>{job.salaryRange}</span>
+                    <div className="flex items-start">
+                      <span className="font-medium mr-1 whitespace-nowrap flex-shrink-0">Salary:</span>
+                      <span className="break-words">{job.salaryRange}</span>
                     </div>
                   )}
                   {job.industry && (
-                    <div className="flex items-center">
-                      <span className="font-medium mr-2">Industry:</span>
-                      <span>{job.industry}</span>
+                    <div className="flex items-start">
+                      <span className="font-medium mr-1 whitespace-nowrap flex-shrink-0">Industry:</span>
+                      <span className="break-words">{job.industry}</span>
                     </div>
                   )}
                 </div>
@@ -243,7 +276,7 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
                     <div>
                       <h3 className="text-lg font-medium mb-3">Educational Requirements</h3>
                       <div className="flex items-center">
-                        <GraduationCap className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                        <GraduationCap className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
                         <span>
                           {job.educationalPreference === "high_school"
                             ? "High School"
@@ -290,7 +323,7 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
                     <div>
                       <h3 className="text-lg font-medium mb-3">Gender Preference</h3>
                       <div className="flex items-center">
-                        <Users className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+                        <Users className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0" />
                         <div className="flex flex-wrap gap-2">
                           {job.genderPreference.map((gender, index) => (
                             <Badge key={index} variant="outline">
@@ -412,11 +445,50 @@ export default function PublicJobPage({ params }: { params: { id: string } }) {
 
             <Card>
               <CardHeader>
+                <CardTitle>Job Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Job ID</span>
+                  <div className="flex items-center max-w-[150px] sm:max-w-full">
+                    <span className="font-medium truncate">{jobId}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 ml-0 mr-2 flex-shrink-0"
+                      onClick={handleCopyJobId}
+                      title="Copy Job ID"
+                    >
+                      <Clipboard className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 dark:text-gray-400">Status</span>
+                  <Badge className={getStatusBadgeVariant(job.status)}>
+                    {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 dark:text-gray-400">Posted on</span>
+                  <span className="font-medium">{new Date(job.createdAt).toLocaleDateString()}</span>
+                </div>
+                {job.daysLeft !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400">Days Left</span>
+                    <span className="font-medium">{job.daysLeft}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle>Share This Job</CardTitle>
               </CardHeader>
               <CardContent>
                 <Button variant="outline" className="w-full" onClick={handleShareJob}>
-                  <Share2 className="h-4 w-4 mr-2" />
+                  <Clipboard className="h-4 w-4 mr-2" />
                   Copy Job Link
                 </Button>
               </CardContent>

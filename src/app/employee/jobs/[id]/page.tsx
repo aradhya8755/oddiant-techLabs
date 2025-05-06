@@ -5,7 +5,20 @@ import { useRouter } from "next/navigation"
 import { use } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Briefcase, MapPin, Clock, Users, Edit, Trash2, Share2, Copy, Building } from "lucide-react"
+import {
+  ArrowLeft,
+  Briefcase,
+  MapPin,
+  Clock,
+  Users,
+  Edit,
+  Trash2,
+  Share2,
+  Copy,
+  Building,
+  FileText,
+  Clipboard,
+} from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -238,7 +251,24 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
         </Button>
 
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">{job.jobTitle}</h1>
+          <div>
+            <h1 className="text-2xl font-bold">{job.jobTitle}</h1>
+            <div className="flex items-center mt-1">
+              <FileText className="h-4 w-4 mr-1 text-black" />
+              <span className="text-sm text-black">Job ID: {jobId}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 ml-1"
+                onClick={() => {
+                  navigator.clipboard.writeText(jobId)
+                  toast.success("Job ID copied to clipboard")
+                }}
+              >
+                <Clipboard className="h-3.5 w-3.5 text-gray-500" />
+              </Button>
+            </div>
+          </div>
           <div className="flex space-x-2">
             <Button variant="outline" onClick={() => router.push(`/employee/jobs/${jobId}/edit`)}>
               <Edit className="h-4 w-4 mr-2" />
@@ -300,14 +330,16 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
                   </div>
                   {job.salaryRange && (
                     <div className="flex items-center">
-                      <span className="font-medium mr-2">Salary:</span>
+                      <span className="font-medium mr-1">Salary:</span>
                       <span>{job.salaryRange}</span>
                     </div>
                   )}
                   {job.industry && (
-                    <div className="flex items-center">
-                      <span className="font-medium mr-2">Industry:</span>
-                      <span>{job.industry}</span>
+                    <div className="sm:col-span-2">
+                      <div className="flex flex-wrap items-start">
+                        <span className="font-medium mr-1 whitespace-nowrap">Industry:</span>
+                        <span className="break-words">{job.industry}</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -474,6 +506,23 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
                 <CardTitle>Job Stats</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Job ID</span>
+                  <div className="flex items-center max-w-[180px] sm:max-w-full">
+                    <span className="font-medium text-right truncate">{jobId}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 ml-0 flex-shrink-0 mr-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(jobId)
+                        toast.success("Job ID copied to clipboard")
+                      }}
+                    >
+                      <Clipboard className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 dark:text-gray-400">Posted on</span>
                   <span className="font-medium">{new Date(job.createdAt).toLocaleDateString()}</span>

@@ -23,6 +23,8 @@ import {
   MessageSquare,
   Info,
   Award,
+  FileSpreadsheet,
+  Loader2,
 } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -140,6 +142,7 @@ export default function CandidateDetailsPage({
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingInterviews, setIsLoadingInterviews] = useState(true)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     const fetchCandidate = async () => {
@@ -213,6 +216,48 @@ export default function CandidateDetailsPage({
     } catch (error) {
       console.error("Error updating candidate status:", error)
       toast.error("Failed to update candidate status")
+    }
+  }
+
+  // Function to export candidate data to Excel
+  const handleExportToExcel = async () => {
+    if (!candidate) return
+
+    try {
+      setIsExporting(true)
+
+      // Use the GET endpoint for single candidate export
+      const response = await fetch(`/api/employee/candidates/${candidateId}/export`, {
+        method: "GET",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to export candidate data")
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob()
+
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob)
+
+      // Create a temporary link element
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `candidate_${candidateId}.xlsx`
+
+      // Append to the document, click it, and remove it
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success("Candidate data exported successfully")
+    } catch (error) {
+      console.error("Error exporting candidate data:", error)
+      toast.error("Failed to export candidate data")
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -496,6 +541,19 @@ export default function CandidateDetailsPage({
                     >
                       <Calendar className="h-4 w-4 mr-2" />
                       Schedule Interview
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={handleExportToExcel}
+                      disabled={isExporting}
+                    >
+                      {isExporting ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      )}
+                      {isExporting ? "Exporting..." : "Export to Excel"}
                     </Button>
                   </div>
                 </div>

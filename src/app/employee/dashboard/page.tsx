@@ -18,6 +18,9 @@ import {
   PlusCircle,
   Search,
   RefreshCw,
+  FileText,
+  Download,
+  Send,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -26,6 +29,11 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import JobPostingForm from "@/components/job-posting-form"
+import { FilterPanel } from "@/components/ats/filter-panel"
+import { ResumeViewer } from "@/components/ats/resume-viewer"
+import { CandidateList } from "@/components/ats/candidate-list"
+import AvatarUpload from "@/components/avatar-upload"
+import { CandidateSelectionProvider, useCandidateSelection } from "@/components/candidate-selection-context"
 
 interface EmployeeData {
   _id: string
@@ -37,6 +45,7 @@ interface EmployeeData {
   companyLocation: string
   phone: string
   profileCompleted: boolean
+  avatar?: string
   notificationSettings?: {
     emailNotifications: boolean
     applicationUpdates: boolean
@@ -52,6 +61,23 @@ interface Candidate {
   status: string
   avatar?: string
   appliedDate: string
+  skills: string[]
+  location: string
+  yearsOfExperience: number
+  currentPosition: string
+  content: string
+  firstName: string
+  lastName: string
+  phone: string
+  website: string
+  experience: any[]
+  education: any[]
+  matchScore: number
+  gender: string
+  state: string
+  currentSalary: number
+  age: number
+  industry?: string
 }
 
 interface JobPosting {
@@ -76,7 +102,16 @@ interface Interview {
   jobId?: string
 }
 
-export default function EmployeeDashboard() {
+// Wrap the main component with the CandidateSelectionProvider
+export default function EmployeeDashboardWrapper() {
+  return (
+    <CandidateSelectionProvider>
+      <EmployeeDashboard />
+    </CandidateSelectionProvider>
+  )
+}
+
+function EmployeeDashboard() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const tabParam = searchParams.get("tab")
@@ -116,6 +151,43 @@ export default function EmployeeDashboard() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastRefreshed, setLastRefreshed] = useState(new Date())
+  const [isExporting, setIsExporting] = useState(false)
+  const [isSingleExporting, setIsSingleExporting] = useState<string | null>(null)
+
+  // Get candidate selection context
+  const { selectedCandidates, toggleCandidateSelection, selectAllCandidates, clearSelectedCandidates, isSelected } =
+    useCandidateSelection()
+
+  // ATS State Variables
+  const [atsResumes, setAtsResumes] = useState<Candidate[]>([])
+  const [atsFilteredResumes, setAtsFilteredResumes] = useState<Candidate[]>([])
+  const [atsSelectedResume, setAtsSelectedResume] = useState<Candidate | null>(null)
+  const [atsSearchTerm, setAtsSearchTerm] = useState("")
+  const [atsIsLoading, setAtsIsLoading] = useState(true)
+  const [atsIsExporting, setAtsIsExporting] = useState(false)
+  const [atsFilters, setAtsFilters] = useState({
+    mandatoryKeywords: [],
+    preferredKeywords: [],
+    location: "",
+    state: "",
+    educationLevel: [],
+    gender: "",
+    experienceRange: [0, 20],
+    salaryRange: [0, 200000],
+    industry: "",
+    ageRange: [18, 65],
+    notKeywords: [],
+    atsScore: 0,
+    assets: {
+      bike: false,
+      car: false,
+      wifi: false,
+      laptop: false,
+    },
+    shiftPreference: "",
+  })
+  const [atsShowFilters, setAtsShowFilters] = useState(false)
+  const [atsHighlightKeywords, setAtsHighlightKeywords] = useState(true)
 
   // Effect to update the URL when tab changes
   useEffect(() => {
@@ -427,6 +499,16 @@ export default function EmployeeDashboard() {
     }
   }
 
+  const handleAvatarUpdate = (url: string) => {
+    setEmployee((prev) => {
+      if (!prev) return null
+      return {
+        ...prev,
+        avatar: url,
+      }
+    })
+  }
+
   const handleSaveNotificationSettings = async () => {
     try {
       setIsUpdatingNotifications(true)
@@ -559,12 +641,577 @@ export default function EmployeeDashboard() {
     }
   }
 
+  // Handle export of selected candidates
+  const handleExportSelectedCandidates = async () => {
+    if (selectedCandidates.length === 0) {
+      toast.error("Please select at least one candidate to export")
+      return
+    }
+
+    try {
+      setIsExporting(true)
+      toast.info(`Preparing export for ${selectedCandidates.length} candidates, please wait...`)
+
+      // Create a more robust fetch with timeout and retry logic
+      const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 60000) => {
+        const controller = new AbortController()
+        const id = setTimeout(() => controller.abort(), timeout)
+
+        try {
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+          })
+          clearTimeout(id)
+          return response
+        } catch (error) {
+          clearTimeout(id)
+          throw error
+        }
+      }
+
+      // Try up to 3 times with exponential backoff
+      let response = null
+      let attempt = 0
+      const maxAttempts = 3
+
+      while (attempt < maxAttempts) {
+        try {
+          response = await fetchWithTimeout(
+            "/api/employee/candidates/export-multiple",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                candidateIds: selectedCandidates,
+              }),
+            },
+            60000,
+          ) // 60 second timeout
+
+          if (response.ok) break
+
+          // If response is not ok but is a JSON response, don't retry
+          const contentType = response.headers.get("content-type")
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json()
+            throw new Error(errorData.message || "Failed to export candidates")
+          }
+
+          // Otherwise, retry with backoff
+          attempt++
+          if (attempt < maxAttempts) {
+            const backoffTime = Math.pow(2, attempt) * 1000 // Exponential backoff: 2s, 4s, 8s
+            toast.info(`Export attempt ${attempt} failed. Retrying in ${backoffTime / 1000} seconds...`)
+            await new Promise((resolve) => setTimeout(resolve, backoffTime))
+          }
+        } catch (error) {
+          console.error(`Attempt ${attempt + 1} failed:`, error)
+          attempt++
+
+          if (attempt < maxAttempts) {
+            const backoffTime = Math.pow(2, attempt) * 1000
+            toast.info(`Export attempt ${attempt} failed. Retrying in ${backoffTime / 1000} seconds...`)
+            await new Promise((resolve) => setTimeout(resolve, backoffTime))
+          } else {
+            throw error
+          }
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw new Error("Failed to export candidates after multiple attempts")
+      }
+
+      // Check if the response is a blob or JSON
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to export candidates")
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob()
+
+      if (blob.size === 0) {
+        throw new Error("Received empty file from server")
+      }
+
+      // Create a download link and trigger download
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.style.display = "none"
+      a.href = url
+      a.download = `candidates_export_${new Date().toLocaleDateString().replace(/\//g, "-")}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+
+      // Clean up
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success(`Successfully exported ${selectedCandidates.length} candidates`)
+
+      // Clear selection after successful export
+      clearSelectedCandidates()
+    } catch (error) {
+      console.error("Error exporting candidates:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to export candidates")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Handle export of a single candidate
+  const handleExportSingleCandidate = async (candidateId: string, candidateName: string) => {
+    try {
+      setIsSingleExporting(candidateId)
+      toast.info("Preparing export, please wait...")
+
+      const response = await fetch(`/api/employee/candidates/${candidateId}/export`)
+
+      if (!response.ok) {
+        // Try to get error message from response
+        let errorMessage = "Failed to export resume"
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorMessage
+        } catch (e) {
+          console.error("Could not parse error response:", e)
+        }
+        throw new Error(errorMessage)
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob()
+
+      if (blob.size === 0) {
+        throw new Error("Received empty file from server")
+      }
+
+      // Create a download link and trigger download
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.style.display = "none"
+      a.href = url
+      a.download = `${candidateName.replace(/\s+/g, "_")}_resume.xlsx`
+      document.body.appendChild(a)
+      a.click()
+
+      // Clean up
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success("Resume exported successfully")
+    } catch (error) {
+      console.error("Error exporting resume:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to export resume")
+    } finally {
+      setIsSingleExporting(null)
+    }
+  }
+
   const filteredCandidates = candidates.filter(
     (candidate) =>
       candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.role.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  // ATS: Fetch Resumes from DB
+  const fetchAtsResumes = useCallback(async () => {
+    try {
+      setAtsIsLoading(true)
+      const response = await fetch("/api/employee/candidates") // Assuming your API endpoint for candidates is the same
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch ATS resumes")
+      }
+
+      const data = await response.json()
+      const formattedResumes = data.candidates.map((candidate: any) => ({
+        _id: candidate._id,
+        name: candidate.name,
+        email: candidate.email,
+        role: candidate.role,
+        status: candidate.status,
+        avatar: candidate.avatar || "/placeholder.svg?height=40&width=40",
+        appliedDate: new Date(candidate.createdAt).toLocaleDateString(),
+        skills: candidate.skills || [],
+        location: candidate.location || "",
+        yearsOfExperience: candidate.yearsOfExperience || 0,
+        currentPosition: candidate.role || "",
+        content: candidate.profileOutline || "",
+        firstName: candidate.firstName || "",
+        lastName: candidate.lastName || "",
+        phone: candidate.phone || "",
+        website: candidate.website || "",
+        experience: candidate.experience || [],
+        education: candidate.education || [],
+        matchScore: 0,
+        gender: candidate.gender || "",
+        state: candidate.currentState || "",
+        currentSalary: candidate.currentSalary || 0,
+        age: candidate.age || 25,
+        industry: candidate.industry || "",
+      }))
+      setAtsResumes(formattedResumes)
+      setAtsFilteredResumes(formattedResumes)
+    } catch (error) {
+      console.error("Error fetching ATS resumes:", error)
+      toast.error("Failed to load ATS resumes")
+    } finally {
+      setAtsIsLoading(false)
+    }
+  }, [])
+
+  // ATS: Handle search
+  useEffect(() => {
+    if (!atsSearchTerm.trim()) {
+      setAtsFilteredResumes(atsResumes)
+      return
+    }
+
+    const filtered = atsResumes.filter((resume) => {
+      const fullName = `${resume.firstName} ${resume.lastName}`.toLowerCase()
+      const content = resume.content.toLowerCase()
+      const searchLower = atsSearchTerm.toLowerCase()
+
+      return (
+        fullName.includes(searchLower) ||
+        content.includes(searchLower) ||
+        resume.email.toLowerCase().includes(searchLower) ||
+        resume.location.toLowerCase().includes(searchLower) ||
+        resume.currentPosition.toLowerCase().includes(searchLower)
+      )
+    })
+
+    setAtsFilteredResumes(filtered)
+  }, [atsSearchTerm, atsResumes])
+
+  // ATS: Apply filters
+  const applyAtsFilters = () => {
+    setAtsIsLoading(true)
+
+    setTimeout(() => {
+      let filtered = [...atsResumes]
+
+      // Apply mandatory keywords filter
+      if (atsFilters.mandatoryKeywords.length > 0) {
+        filtered = filtered.filter((resume) => {
+          return atsFilters.mandatoryKeywords.every((keyword) =>
+            resume.content.toLowerCase().includes(keyword.toLowerCase()),
+          )
+        })
+      }
+
+      // Apply preferred keywords filter (boost score but don't filter out)
+      if (atsFilters.preferredKeywords.length > 0) {
+        // In a real implementation, this would adjust a score
+        // For now, we'll just sort by the number of preferred keywords matched
+        filtered.sort((a, b) => {
+          const aMatches = atsFilters.preferredKeywords.filter((keyword) =>
+            a.content.toLowerCase().includes(keyword.toLowerCase()),
+          ).length
+
+          const bMatches = atsFilters.preferredKeywords.filter((keyword) =>
+            b.content.toLowerCase().includes(keyword.toLowerCase()),
+          ).length
+
+          return bMatches - aMatches
+        })
+      }
+
+      // Apply location filter
+      if (atsFilters.location) {
+        filtered = filtered.filter((resume) =>
+          resume.location.toLowerCase().includes(atsFilters.location.toLowerCase()),
+        )
+      }
+
+      // Apply state filter
+      if (atsFilters.state) {
+        filtered = filtered.filter((resume) => resume.state.toLowerCase().includes(atsFilters.state.toLowerCase()))
+      }
+
+      // Apply education level filter
+      if (atsFilters.educationLevel.length > 0) {
+        filtered = filtered.filter((resume) =>
+          atsFilters.educationLevel.some((level) =>
+            resume.education.some((edu) => {
+              if (typeof edu === "object" && edu && typeof edu.degree === "string") {
+                return edu.degree.toLowerCase().includes(level.toLowerCase())
+              }
+              return false
+            }),
+          ),
+        )
+      }
+
+      // Apply gender filter
+      if (atsFilters.gender) {
+        filtered = filtered.filter((resume) => resume.gender.toLowerCase() === atsFilters.gender.toLowerCase())
+      }
+
+      // Apply experience range filter
+      filtered = filtered.filter(
+        (resume) =>
+          resume.yearsOfExperience >= atsFilters.experienceRange[0] &&
+          resume.yearsOfExperience <= atsFilters.experienceRange[1],
+      )
+
+      // Apply salary range filter
+      filtered = filtered.filter(
+        (resume) =>
+          resume.currentSalary >= atsFilters.salaryRange[0] && resume.currentSalary <= atsFilters.salaryRange[1],
+      )
+
+      // Apply industry filter
+      if (atsFilters.industry) {
+        filtered = filtered.filter((resume) => {
+          if (!resume.industry) return false
+          return resume.industry.toLowerCase().includes(atsFilters.industry.toLowerCase())
+        })
+      }
+
+      // Apply age range filter
+      filtered = filtered.filter(
+        (resume) => resume.age >= atsFilters.ageRange[0] && resume.age <= atsFilters.ageRange[1],
+      )
+
+      // Apply NOT keywords filter
+      if (atsFilters.notKeywords.length > 0) {
+        filtered = filtered.filter((resume) => {
+          return !atsFilters.notKeywords.some((keyword) => resume.content.toLowerCase().includes(keyword.toLowerCase()))
+        })
+      }
+
+      // Apply ATS score filter
+      if (atsFilters.atsScore > 0) {
+        filtered = filtered.filter((resume) => {
+          // Calculate match score for each resume
+          let matchCount = 0
+          const content = resume.content.toLowerCase()
+
+          for (const keyword of atsFilters.mandatoryKeywords) {
+            if (keyword && content.includes(keyword.toLowerCase())) {
+              matchCount++
+            }
+          }
+
+          for (const keyword of atsFilters.preferredKeywords) {
+            if (keyword && content.includes(keyword.toLowerCase())) {
+              matchCount++
+            }
+          }
+
+          const totalKeywords = atsFilters.mandatoryKeywords.length + atsFilters.preferredKeywords.length
+          const score = totalKeywords > 0 ? Math.round((matchCount / totalKeywords) * 100) : 0
+
+          // Update the resume's match score
+          resume.matchScore = score
+
+          // Filter based on minimum score
+          return score >= atsFilters.atsScore
+        })
+      }
+
+      // Apply assets filter
+      if (atsFilters.assets) {
+        const { bike, car, wifi, laptop } = atsFilters.assets
+        if (bike || car || wifi || laptop) {
+          filtered = filtered.filter((resume) => {
+            const assets = resume.skills.map((s) => s.toLowerCase())
+            if (bike && !assets.some((a) => a.includes("bike") || a.includes("motorcycle"))) return false
+            if (car && !assets.some((a) => a.includes("car") || a.includes("driving"))) return false
+            if (wifi && !assets.some((a) => a.includes("wifi") || a.includes("internet"))) return false
+            if (laptop && !assets.some((a) => a.includes("laptop") || a.includes("computer"))) return false
+            return true
+          })
+        }
+      }
+
+      // Apply shift preference filter
+      if (atsFilters.shiftPreference) {
+        filtered = filtered.filter((resume) => {
+          const content = resume.content.toLowerCase()
+          const preference = atsFilters.shiftPreference.toLowerCase()
+          return (
+            content.includes(preference) ||
+            (resume.skills && resume.skills.some((s) => s.toLowerCase().includes(preference)))
+          )
+        })
+      }
+
+      setAtsFilteredResumes(filtered)
+      setAtsIsLoading(false)
+
+      toast.success(`Found ${filtered.length} matching resumes`)
+    }, 500) // Simulate API delay
+  }
+
+  const resetAtsFilters = () => {
+    // Create a completely fresh default state object
+    const defaultFilters = {
+      mandatoryKeywords: [],
+      preferredKeywords: [],
+      location: "",
+      state: "",
+      educationLevel: [],
+      gender: "",
+      experienceRange: [0, 20],
+      salaryRange: [0, 200000],
+      industry: "",
+      ageRange: [18, 65],
+      notKeywords: [],
+      atsScore: 0,
+      assets: {
+        bike: false,
+        car: false,
+        wifi: false,
+        laptop: false,
+      },
+      shiftPreference: "",
+    }
+
+    // Set the filters back to default
+    setAtsFilters(defaultFilters)
+
+    // Reset the filtered resumes to show all resumes
+    setAtsFilteredResumes(atsResumes)
+
+    // Clear the location input field in the DOM
+    const locationInput = document.querySelector('input[placeholder="Noida"]') as HTMLInputElement
+    if (locationInput) {
+      locationInput.value = ""
+    }
+
+    toast.info("Filters have been reset")
+  }
+
+  const handleAtsExport = async () => {
+    try {
+      setAtsIsExporting(true)
+      toast.info("Preparing export, please wait...")
+
+      // Get the IDs of all filtered resumes
+      const candidateIds = atsFilteredResumes.map((resume) => resume._id)
+
+      // Use the same robust fetch with timeout and retry logic
+      const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 60000) => {
+        const controller = new AbortController()
+        const id = setTimeout(() => controller.abort(), timeout)
+
+        try {
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+          })
+          clearTimeout(id)
+          return response
+        } catch (error) {
+          clearTimeout(id)
+          throw error
+        }
+      }
+
+      // Try up to 3 times with exponential backoff
+      let response = null
+      let attempt = 0
+      const maxAttempts = 3
+
+      while (attempt < maxAttempts) {
+        try {
+          response = await fetchWithTimeout(
+            "/api/employee/candidates/export-multiple",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                candidateIds: candidateIds,
+              }),
+            },
+            60000,
+          ) // 60 second timeout
+
+          if (response.ok) break
+
+          // If response is not ok but is a JSON response, don't retry
+          const contentType = response.headers.get("content-type")
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json()
+            throw new Error(errorData.message || "Failed to export candidates")
+          }
+
+          // Otherwise, retry with backoff
+          attempt++
+          if (attempt < maxAttempts) {
+            const backoffTime = Math.pow(2, attempt) * 1000 // Exponential backoff: 2s, 4s, 8s
+            toast.info(`Export attempt ${attempt} failed. Retrying in ${backoffTime / 1000} seconds...`)
+            await new Promise((resolve) => setTimeout(resolve, backoffTime))
+          }
+        } catch (error) {
+          console.error(`Attempt ${attempt + 1} failed:`, error)
+          attempt++
+
+          if (attempt < maxAttempts) {
+            const backoffTime = Math.pow(2, attempt) * 1000
+            toast.info(`Export attempt ${attempt} failed. Retrying in ${backoffTime / 1000} seconds...`)
+            await new Promise((resolve) => setTimeout(resolve, backoffTime))
+          } else {
+            throw error
+          }
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw new Error("Failed to export candidates after multiple attempts")
+      }
+
+      // Check if the response is a blob or JSON
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to export candidates")
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob()
+
+      if (blob.size === 0) {
+        throw new Error("Received empty file from server")
+      }
+
+      // Create a download link and trigger download
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.style.display = "none"
+      a.href = url
+      a.download = `candidates_export_${new Date().toLocaleDateString().replace(/\//g, "-")}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+
+      // Clean up
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success(`Successfully exported ${atsFilteredResumes.length} candidates`)
+    } catch (error) {
+      console.error("Error exporting candidates:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to export candidates")
+    } finally {
+      setAtsIsExporting(false)
+    }
+  }
+
+  // Fetch ATS resumes on mount
+  useEffect(() => {
+    fetchAtsResumes()
+  }, [fetchAtsResumes])
 
   if (isLoading) {
     return (
@@ -671,7 +1318,7 @@ export default function EmployeeDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-5 w-full max-w-3xl mx-auto">
+          <TabsList className="grid grid-cols-6 w-full max-w-3xl mx-auto">
             <TabsTrigger value="overview" className="flex items-center justify-center">
               <User className="h-4 w-4 mr-2" />
               Overview
@@ -688,6 +1335,10 @@ export default function EmployeeDashboard() {
               <Calendar className="h-4 w-4 mr-2" />
               Interviews
             </TabsTrigger>
+            <TabsTrigger value="ats" className="flex items-center justify-center">
+              <Search className="h-4 w-4 mr-2" />
+              ATS
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center justify-center">
               <Settings className="h-4 w-4 mr-2" />
               Settings
@@ -701,6 +1352,17 @@ export default function EmployeeDashboard() {
                   <CardTitle>Company Profile</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <div className="flex flex-col items-center mb-6">
+                    <AvatarUpload
+                      initialAvatarUrl={employee.avatar}
+                      employeeId={employee._id}
+                      onAvatarUpdate={handleAvatarUpdate}
+                    />
+                    <h3 className="mt-4 font-medium text-lg">
+                      {employee.firstName} {employee.lastName}
+                    </h3>
+                    <p className="text-sm text-gray-500">{employee.email}</p>
+                  </div>
                   {employee.companyName && (
                     <div className="space-y-4">
                       <div>
@@ -753,19 +1415,29 @@ export default function EmployeeDashboard() {
                               <p className="text-sm text-gray-500 dark:text-gray-400">{candidate.role}</p>
                             </div>
                           </div>
-                          <Badge
-                            className={
-                              candidate.status === "Shortlisted"
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                                : candidate.status === "Interview"
-                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-                                  : candidate.status === "Rejected"
-                                    ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                                    : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
-                            }
-                          >
-                            {candidate.status}
-                          </Badge>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/employee/candidates/${candidate._id}/contact`)}
+                              className="flex items-center"
+                            >
+                              <Send className="h-4 w-4 mr-1" />
+                            </Button>
+                            <Badge
+                              className={
+                                candidate.status === "Shortlisted"
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                                  : candidate.status === "Interview"
+                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                                    : candidate.status === "Rejected"
+                                      ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                      : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
+                              }
+                            >
+                              {candidate.status}
+                            </Badge>
+                          </div>
                         </div>
                       ))
                     ) : (
@@ -880,6 +1552,16 @@ export default function EmployeeDashboard() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportSelectedCandidates}
+                      disabled={isExporting || selectedCandidates.length === 0}
+                      className="flex items-center"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      {isExporting ? "Exporting..." : "Export Selected"}
+                    </Button>
                     <Button onClick={() => router.push("/employee/candidates/add")}>
                       <PlusCircle className="h-4 w-4 mr-2" />
                       Add Candidate
@@ -890,19 +1572,39 @@ export default function EmployeeDashboard() {
               <CardContent>
                 {filteredCandidates.length > 0 ? (
                   <div className="rounded-md border dark:border-gray-700">
-                    <div className="grid grid-cols-6 bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <div className="grid grid-cols-8 bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+                      <div className="col-span-1 flex items-center">
+                        <Checkbox
+                          id="select-all"
+                          checked={
+                            selectedCandidates.length === filteredCandidates.length && filteredCandidates.length > 0
+                          }
+                          onCheckedChange={() => selectAllCandidates(filteredCandidates.map((c) => c._id))}
+                          className="mr-2"
+                        />
+                        <Label htmlFor="select-all" className="cursor-pointer">
+                          Select All
+                        </Label>
+                      </div>
                       <div className="col-span-2">Candidate</div>
                       <div>Position</div>
                       <div>Status</div>
                       <div>Applied Date</div>
-                      <div className="text-right">Actions</div>
+                      <div className="text-right col-span-2">Actions</div>
                     </div>
 
                     {filteredCandidates.map((candidate) => (
                       <div
                         key={candidate._id}
-                        className="grid grid-cols-6 border-t dark:border-gray-700 p-3 items-center"
+                        className="grid grid-cols-8 border-t dark:border-gray-700 p-3 items-center"
                       >
+                        <div className="col-span-1">
+                          <Checkbox
+                            id={`select-${candidate._id}`}
+                            checked={isSelected(candidate._id)}
+                            onCheckedChange={() => toggleCandidateSelection(candidate._id)}
+                          />
+                        </div>
                         <div className="col-span-2 flex items-center">
                           <Avatar className="h-8 w-8 mr-2">
                             <AvatarImage src={candidate.avatar || "/placeholder.svg"} alt={candidate.name} />
@@ -930,7 +1632,7 @@ export default function EmployeeDashboard() {
                           </Badge>
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">{candidate.appliedDate}</div>
-                        <div className="flex justify-end space-x-2">
+                        <div className="flex justify-end space-x-2 col-span-2">
                           <Button
                             variant="outline"
                             size="sm"
@@ -944,7 +1646,17 @@ export default function EmployeeDashboard() {
                             className="text-blue-600 dark:text-blue-400"
                             onClick={() => router.push(`/employee/candidates/${candidate._id}/contact`)}
                           >
+                            <Send className="h-4 w-4 mr-1" />
                             Contact
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleExportSingleCandidate(candidate._id, candidate.name)}
+                            disabled={isSingleExporting === candidate._id}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            {isSingleExporting === candidate._id ? "Exporting..." : "Export"}
                           </Button>
                         </div>
                       </div>
@@ -1149,6 +1861,152 @@ export default function EmployeeDashboard() {
             </Card>
           </TabsContent>
 
+          {/* ATS Tab Content */}
+          <TabsContent value="ats">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col md:flex-row justify-between md:items-center space-y-4 md:space-y-0">
+                  <CardTitle>Applicant Tracking System</CardTitle>
+
+                  <div className="flex items-center space-x-2">
+                    <div className="relative w-full md:w-64">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      <Input
+                        placeholder="Search resumes..."
+                        className="pl-8"
+                        value={atsSearchTerm}
+                        onChange={(e) => setAtsSearchTerm(e.target.value)}
+                      />
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setAtsIsLoading(true)
+                        fetchAtsResumes().finally(() => setAtsIsLoading(false))
+                      }}
+                      disabled={atsIsLoading}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${atsIsLoading ? "animate-spin" : ""}`} />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-gray-500">
+                    {atsFilteredResumes.length} {atsFilteredResumes.length === 1 ? "resume" : "resumes"} found
+                  </p>
+
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAtsExport}
+                      disabled={atsIsExporting || atsFilteredResumes.length === 0}
+                      className="flex items-center"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      {atsIsExporting ? "Exporting..." : "Export All"}
+                    </Button>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="highlight-keywords"
+                        checked={atsHighlightKeywords}
+                        onCheckedChange={(checked) => setAtsHighlightKeywords(!!checked)}
+                      />
+                      <Label htmlFor="highlight-keywords">Highlight Keywords</Label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {/* Filters Panel */}
+                  <div className="space-y-4">
+                    <Button
+                      variant="outline"
+                      className="w-full flex items-center justify-center"
+                      onClick={() => setAtsShowFilters(!atsShowFilters)}
+                    >
+                      <span className="mr-2">{atsShowFilters ? "Hide Filters" : "Show Filters"}</span>
+                      {atsShowFilters ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="18 15 12 9 6 15"></polyline>
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      )}
+                    </Button>
+
+                    {atsShowFilters && (
+                      <FilterPanel
+                        filters={atsFilters}
+                        setFilters={setAtsFilters}
+                        applyFilters={applyAtsFilters}
+                        resetFilters={resetAtsFilters}
+                      />
+                    )}
+                  </div>
+
+                  {/* Use the CandidateList component */}
+                  <CandidateList
+                    candidates={atsFilteredResumes}
+                    isLoading={atsIsLoading}
+                    onSelectCandidate={setAtsSelectedResume}
+                    selectedCandidateId={atsSelectedResume?._id || null}
+                  />
+
+                  {/* Resume Viewer */}
+                  <div className="border rounded-md overflow-hidden lg:col-span-2">
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 border-b">
+                      <h3 className="font-medium">Resume Preview</h3>
+                    </div>
+
+                    <div className="p-4 max-h-[600px] overflow-y-auto">
+                      {atsSelectedResume ? (
+                        <ResumeViewer
+                          resume={atsSelectedResume}
+                          highlightKeywords={atsHighlightKeywords}
+                          keywords={[...atsFilters.mandatoryKeywords, ...atsFilters.preferredKeywords]}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                          <FileText className="h-12 w-12 mb-4 text-gray-300" />
+                          <p>Select a resume to view details</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="settings">
             <Card>
               <CardHeader>
@@ -1158,6 +2016,13 @@ export default function EmployeeDashboard() {
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Personal Information</h3>
+                  <div className="flex flex-col items-center mb-6">
+                    <AvatarUpload
+                      initialAvatarUrl={employee.avatar}
+                      employeeId={employee._id}
+                      onAvatarUpdate={handleAvatarUpdate}
+                    />
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="firstName">First Name</Label>

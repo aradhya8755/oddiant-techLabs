@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { User, Users, Briefcase, Calendar, Settings } from "lucide-react"
+import { User, Users, Briefcase, Calendar, Settings, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -27,6 +27,11 @@ const navItems = [
     icon: Calendar,
   },
   {
+    label: "ATS",
+    href: "/employee/dashboard?tab=ats",
+    icon: Search,
+  },
+  {
     label: "Settings",
     href: "/employee/dashboard?tab=settings",
     icon: Settings,
@@ -42,8 +47,7 @@ export function EmployeeNavbar() {
       <div className="max-w-7xl mx-auto">
         <nav className="flex overflow-x-auto">
           {navItems.map((item) => {
-            const isActive =
-              (item.label.toLowerCase() === "overview" && currentTab === "") || currentTab === item.label.toLowerCase()
+            const isActive = item.label.toLowerCase() === currentTab
 
             return (
               <Link

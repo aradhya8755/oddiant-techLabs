@@ -1,37 +1,28 @@
-// components/ui/slider.tsx
-import React from "react"
+"use client"
 
-type SliderProps = {
-  min?: number
-  max?: number
-  step?: number
-  value?: number[]
-  onChange?: (val: number[]) => void
-}
+import * as React from "react"
+import * as SliderPrimitive from "@radix-ui/react-slider"
 
-export const Slider = ({
-  min = 0,
-  max = 100,
-  step = 1,
-  value = [0],
-  onChange,
-}: SliderProps) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVal = [parseInt(e.target.value)]
-    onChange?.(newVal)
-  }
+import { cn } from "@/lib/utils"
 
-  return (
-    <div className="w-full">
-      <input
-        type="range"
-        className="w-full"
-        min={min}
-        max={max}
-        step={step}
-        value={value[0]}
-        onChange={handleChange}
-      />
-    </div>
-  )
-}
+const Slider = React.forwardRef<
+  React.ElementRef<typeof SliderPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <SliderPrimitive.Root
+    ref={ref}
+    className={cn("relative flex w-full touch-none select-none items-center", className)}
+    {...props}
+  >
+    <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+      <SliderPrimitive.Range className="absolute h-full bg-slate-900 dark:bg-slate-400" />
+    </SliderPrimitive.Track>
+    <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-slate-900 bg-white ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-50 dark:bg-slate-950 dark:ring-offset-slate-950 dark:focus-visible:ring-slate-300" />
+    {props.value && Array.isArray(props.value) && props.value.length > 1 && (
+      <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-slate-900 bg-white ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-50 dark:bg-slate-950 dark:ring-offset-slate-950 dark:focus-visible:ring-slate-300" />
+    )}
+  </SliderPrimitive.Root>
+))
+Slider.displayName = SliderPrimitive.Root.displayName
+
+export { Slider }

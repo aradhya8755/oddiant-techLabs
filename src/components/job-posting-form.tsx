@@ -1196,13 +1196,13 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
           className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md"
         >
           <option value="">Select preference</option>
-          <option value="high_school">High School</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="bachelors">Bachelor's Degree</option>
-          <option value="masters">Master's Degree</option>
-          <option value="phd">PhD</option>
-          <option value="diploma">Diploma</option>
-          <option value="certificate">Certificate</option>
+          <option value="any_high_school">Any High School</option>
+          <option value="any_intermediate">Any Intermediate</option>
+          <option value="any_bachelors">Any Bachelor's Degree</option>
+          <option value="any_masters">Any Master's Degree</option>
+          <option value="any_phd">Any PhD</option>
+          <option value="any_diploma">Any Diploma</option>
+          <option value="any_certificate">Any Certificate</option>
           <option value="none">No Preference</option>
         </select>
       </div>
@@ -1408,7 +1408,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
       </div>
 
       {/* Questions and Answers */}
-      <h3 className="text-lg font-medium">Questions and Answers (Max 10)</h3>
+      {/* <h3 className="text-lg font-medium">Questions and Answers (Max 10)</h3>
       {questions.map((question, index) => (
         <div key={index} className="space-y-2 border p-4 rounded-md dark:border-gray-700">
           <div className="flex items-center justify-between">
@@ -1456,7 +1456,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
         >
           <Plus className="h-4 w-4 mr-1" /> Add
         </Button>
-      </div>
+      </div> */}
 
       <div className="flex justify-end space-x-3 pt-4">
         <Button
