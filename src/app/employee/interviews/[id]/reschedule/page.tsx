@@ -237,7 +237,7 @@ export default function RescheduleInterviewPage({ params }: { params: { id: stri
                   name="interviewers"
                   value={formData.interviewers}
                   onChange={handleChange}
-                  placeholder="e.g. John Doe, Jane Smith"
+                  placeholder="e.g. Person 1, Person 2"
                 />
               </div>
 

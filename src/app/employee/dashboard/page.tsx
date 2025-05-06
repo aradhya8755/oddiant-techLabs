@@ -18,7 +18,6 @@ import {
   PlusCircle,
   Search,
   RefreshCw,
-  FileText,
   Download,
   Send,
 } from "lucide-react"
@@ -30,7 +29,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import JobPostingForm from "@/components/job-posting-form"
 import { FilterPanel } from "@/components/ats/filter-panel"
-import { ResumeViewer } from "@/components/ats/resume-viewer"
 import { CandidateList } from "@/components/ats/candidate-list"
 import AvatarUpload from "@/components/avatar-upload"
 import { CandidateSelectionProvider, useCandidateSelection } from "@/components/candidate-selection-context"
@@ -988,34 +986,35 @@ function EmployeeDashboard() {
         })
       }
 
-      // Apply ATS score filter
+      // Apply ATS score filter and calculate match scores for all resumes
+      filtered = filtered.map((resume) => {
+        // Calculate match score for each resume
+        let matchCount = 0
+        const content = resume.content.toLowerCase()
+
+        for (const keyword of atsFilters.mandatoryKeywords) {
+          if (keyword && content.includes(keyword.toLowerCase())) {
+            matchCount++
+          }
+        }
+
+        for (const keyword of atsFilters.preferredKeywords) {
+          if (keyword && content.includes(keyword.toLowerCase())) {
+            matchCount++
+          }
+        }
+
+        const totalKeywords = atsFilters.mandatoryKeywords.length + atsFilters.preferredKeywords.length
+        const score = totalKeywords > 0 ? Math.round((matchCount / totalKeywords) * 100) : 50
+
+        // Update the resume's match score (default to 50% if no keywords specified)
+        resume.matchScore = score
+        return resume
+      })
+
+      // Then filter by minimum score if needed
       if (atsFilters.atsScore > 0) {
-        filtered = filtered.filter((resume) => {
-          // Calculate match score for each resume
-          let matchCount = 0
-          const content = resume.content.toLowerCase()
-
-          for (const keyword of atsFilters.mandatoryKeywords) {
-            if (keyword && content.includes(keyword.toLowerCase())) {
-              matchCount++
-            }
-          }
-
-          for (const keyword of atsFilters.preferredKeywords) {
-            if (keyword && content.includes(keyword.toLowerCase())) {
-              matchCount++
-            }
-          }
-
-          const totalKeywords = atsFilters.mandatoryKeywords.length + atsFilters.preferredKeywords.length
-          const score = totalKeywords > 0 ? Math.round((matchCount / totalKeywords) * 100) : 0
-
-          // Update the resume's match score
-          resume.matchScore = score
-
-          // Filter based on minimum score
-          return score >= atsFilters.atsScore
-        })
+        filtered = filtered.filter((resume) => resume.matchScore >= atsFilters.atsScore)
       }
 
       // Apply assets filter
@@ -1412,7 +1411,7 @@ function EmployeeDashboard() {
                             </Avatar>
                             <div>
                               <p className="font-medium">{candidate.name}</p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{candidate.role}</p>
+                              <p className="text-sm text-gray-500">{candidate.role}</p>
                             </div>
                           </div>
                           <div className="flex space-x-2">
@@ -1923,7 +1922,7 @@ function EmployeeDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Filters Panel */}
                   <div className="space-y-4">
                     <Button
@@ -1977,31 +1976,13 @@ function EmployeeDashboard() {
                   <CandidateList
                     candidates={atsFilteredResumes}
                     isLoading={atsIsLoading}
-                    onSelectCandidate={setAtsSelectedResume}
+                    onSelectCandidate={(candidate) => {
+                      // Instead of setting the selected resume, we'll keep this for compatibility
+                      setAtsSelectedResume(candidate)
+                    }}
                     selectedCandidateId={atsSelectedResume?._id || null}
+                    showViewButton={true}
                   />
-
-                  {/* Resume Viewer */}
-                  <div className="border rounded-md overflow-hidden lg:col-span-2">
-                    <div className="bg-gray-50 dark:bg-gray-800 p-3 border-b">
-                      <h3 className="font-medium">Resume Preview</h3>
-                    </div>
-
-                    <div className="p-4 max-h-[600px] overflow-y-auto">
-                      {atsSelectedResume ? (
-                        <ResumeViewer
-                          resume={atsSelectedResume}
-                          highlightKeywords={atsHighlightKeywords}
-                          keywords={[...atsFilters.mandatoryKeywords, ...atsFilters.preferredKeywords]}
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                          <FileText className="h-12 w-12 mb-4 text-gray-300" />
-                          <p>Select a resume to view details</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>

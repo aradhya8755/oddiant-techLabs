@@ -181,7 +181,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="John Doe"
+            placeholder="your name"
             required
           />
         </div>
@@ -192,7 +192,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="john.doe@example.com"
+            placeholder="oddiant@example.com"
             required
           />
         </div>

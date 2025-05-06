@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MapPin, Briefcase, Download, Send } from "lucide-react"
+import { MapPin, Briefcase, Download, Send, ExternalLink } from "lucide-react"
 import { toast } from "sonner"
 
 interface Candidate {
@@ -26,12 +26,20 @@ interface CandidateListProps {
   isLoading: boolean
   onSelectCandidate: (candidate: Candidate) => void
   selectedCandidateId: string | null
+  showViewButton?: boolean
 }
 
-export function CandidateList({ candidates, isLoading, onSelectCandidate, selectedCandidateId }: CandidateListProps) {
+export function CandidateList({
+  candidates,
+  isLoading,
+  onSelectCandidate,
+  selectedCandidateId,
+  showViewButton = true,
+}: CandidateListProps) {
   const router = useRouter()
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([])
   const [isExporting, setIsExporting] = useState(false)
+  const [viewingCandidate, setViewingCandidate] = useState<string | null>(null)
 
   const handleCheckboxChange = (candidateId: string) => {
     setSelectedCandidates((prev) => {
@@ -102,6 +110,14 @@ export function CandidateList({ candidates, isLoading, onSelectCandidate, select
     router.push(`/employee/candidates/${candidateId}/contact`)
   }
 
+  const handleViewCandidate = (candidateId: string) => {
+    setViewingCandidate(candidateId)
+    // Open candidate details in a new tab
+    window.open(`/employee/candidates/${candidateId}`, "_blank")
+    // Reset viewing state after a short delay
+    setTimeout(() => setViewingCandidate(null), 1000)
+  }
+
   return (
     <Card className="border rounded-md overflow-hidden">
       <div className="bg-gray-50 dark:bg-gray-800 p-3 border-b flex justify-between items-center">
@@ -138,8 +154,10 @@ export function CandidateList({ candidates, isLoading, onSelectCandidate, select
           candidates.map((candidate) => (
             <div
               key={candidate._id}
-              className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
-                selectedCandidateId === candidate._id ? "bg-gray-100 dark:bg-gray-800" : ""
+              className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 ${
+                selectedCandidateId === candidate._id
+                  ? "bg-gray-100 dark:bg-gray-800 border-l-blue-500"
+                  : "border-l-transparent"
               }`}
             >
               <div className="flex items-start">
@@ -150,13 +168,15 @@ export function CandidateList({ candidates, isLoading, onSelectCandidate, select
                   className="mt-1 mr-3"
                   onClick={(e) => e.stopPropagation()}
                 />
-                <div className="flex-1" onClick={() => onSelectCandidate(candidate)}>
+                <div className="flex-1 cursor-pointer" onClick={() => onSelectCandidate(candidate)}>
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="font-medium">
+                      <h4 className="font-medium text-blue-600 dark:text-blue-400">
                         {candidate.firstName} {candidate.lastName}
                       </h4>
-                      <p className="text-sm text-gray-500">{candidate.currentPosition}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {candidate.currentPosition || "No position specified"}
+                      </p>
                       <div className="flex items-center mt-1 text-xs text-gray-500">
                         <MapPin className="h-3 w-3 mr-1" />
                         <span>{candidate.location}</span>
@@ -170,9 +190,9 @@ export function CandidateList({ candidates, isLoading, onSelectCandidate, select
                       variant={
                         candidate.matchScore > 70 ? "success" : candidate.matchScore > 40 ? "secondary" : "outline"
                       }
-                      className="text-xs"
+                      className="text-xs font-medium"
                     >
-                      {candidate.matchScore || 0}%
+                      {candidate.matchScore || 50}%
                     </Badge>
                   </div>
 
@@ -190,18 +210,38 @@ export function CandidateList({ candidates, isLoading, onSelectCandidate, select
                     )}
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-2"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleContactCandidate(candidate._id)
-                  }}
-                >
-                  <Send className="h-4 w-4" />
-                  <span className="sr-only">Contact</span>
-                </Button>
+                <div className="flex ml-2 space-x-1">
+                  {showViewButton && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleViewCandidate(candidate._id)
+                      }}
+                      disabled={viewingCandidate === candidate._id}
+                      className="flex items-center"
+                    >
+                      {viewingCandidate === candidate._id ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-t-transparent border-current rounded-full"></div>
+                      ) : (
+                        <ExternalLink className="h-4 w-4" />
+                      )}
+                      <span className="ml-1">View</span>
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleContactCandidate(candidate._id)
+                    }}
+                  >
+                    <Send className="h-4 w-4" />
+                    <span className="sr-only">Contact</span>
+                  </Button>
+                </div>
               </div>
             </div>
           ))

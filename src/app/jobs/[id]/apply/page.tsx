@@ -2297,7 +2297,7 @@ export default function JobApplicationPage({ params }: { params: Promise<{ id: s
                         name="firstName"
                         value={formData.firstName}
                         onChange={handleChange}
-                        placeholder="John"
+                        placeholder="first name"
                         required
                       />
                     </div>
@@ -2309,7 +2309,7 @@ export default function JobApplicationPage({ params }: { params: Promise<{ id: s
                         name="middleName"
                         value={formData.middleName}
                         onChange={handleChange}
-                        placeholder="Robert"
+                        placeholder="middle name"
                       />
                     </div>
 
@@ -2320,7 +2320,7 @@ export default function JobApplicationPage({ params }: { params: Promise<{ id: s
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleChange}
-                        placeholder="Doe"
+                        placeholder="last name"
                         required
                       />
                     </div>
@@ -2334,7 +2334,7 @@ export default function JobApplicationPage({ params }: { params: Promise<{ id: s
                       type="email"
                       value={formData.email}
                       onChange={handleChange}
-                      placeholder="john.doe@example.com"
+                      placeholder="oddiant@example.com"
                       required
                     />
                   </div>
@@ -3068,7 +3068,7 @@ export default function JobApplicationPage({ params }: { params: Promise<{ id: s
                       name="linkedIn"
                       value={formData.linkedIn}
                       onChange={handleChange}
-                      placeholder="linkedin.com/in/johndoe"
+                      placeholder="linkedin.com/in/oddiant"
                     />
                   </div>
 
