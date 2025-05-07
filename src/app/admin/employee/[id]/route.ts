@@ -2,49 +2,61 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
-export const dynamic = "force-dynamic";
-
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const url = new URL(request.url);
-    const id = url.pathname.split("/").pop();
+    const { id: employeeId } = params;
 
-    if (!id || !ObjectId.isValid(id)) {
+    if (!employeeId) {
       return NextResponse.json(
-        { success: false, message: "Invalid or missing ID" },
+        { success: false, message: "Employee ID is required" },
         { status: 400 }
       );
     }
 
     const { db } = await connectToDatabase();
 
-    const appeal = await db.collection("appeals").findOne({
-      _id: new ObjectId(id),
-    });
-
-    if (!appeal) {
+    let employee;
+    try {
+      employee = await db.collection("employees").findOne({
+        _id: new ObjectId(employeeId),
+      });
+    } catch (error) {
+      console.error("Error finding employee:", error);
       return NextResponse.json(
-        { success: false, message: "Appeal not found" },
+        { success: false, message: "Invalid employee ID format" },
+        { status: 400 }
+      );
+    }
+
+    if (!employee) {
+      return NextResponse.json(
+        { success: false, message: "Employee not found" },
         { status: 404 }
       );
     }
 
+    const { password, ...employeeData } = employee;
+
     const response = NextResponse.json(
-      { success: true, appeal },
+      { success: true, employee: employeeData },
       { status: 200 }
     );
 
-    // Optional: Prevent caching
-    response.headers.set("Cache-Control", "no-store");
+    response.headers.set("Cache-Control", "no-store, max-age=0");
     response.headers.set("Pragma", "no-cache");
     response.headers.set("Expires", "0");
 
     return response;
   } catch (error) {
-    console.error("Error in GET /api/employee/appeal/[id]:", error);
+    console.error("Error in GET /api/employee/[id]:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = "force-dynamic";
