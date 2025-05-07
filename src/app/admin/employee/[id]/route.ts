@@ -2,9 +2,9 @@ import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, context: { params: { id: string } }) {
   try {
-    const employeeId = params.id
+    const employeeId = context.params.id
 
     if (!employeeId) {
       return NextResponse.json({ success: false, message: "Employee ID is required" }, { status: 400 })
