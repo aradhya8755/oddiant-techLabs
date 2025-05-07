@@ -1,62 +1,52 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { type NextRequest, NextResponse } from "next/server"
+import { connectToDatabase } from "@/lib/mongodb"
+import { ObjectId } from "mongodb"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id: employeeId } = params;
+    const employeeId = context.params.id
 
     if (!employeeId) {
-      return NextResponse.json(
-        { success: false, message: "Employee ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "Employee ID is required" }, { status: 400 })
     }
 
-    const { db } = await connectToDatabase();
+    // Connect to database
+    const { db } = await connectToDatabase()
 
-    let employee;
+    // Find employee by ID
+    let employee
     try {
-      employee = await db.collection("employees").findOne({
-        _id: new ObjectId(employeeId),
-      });
+      employee = await db.collection("employees").findOne({ _id: new ObjectId(employeeId) })
     } catch (error) {
-      console.error("Error finding employee:", error);
-      return NextResponse.json(
-        { success: false, message: "Invalid employee ID format" },
-        { status: 400 }
-      );
+      console.error("Error finding employee by ID:", error)
+      return NextResponse.json({ success: false, message: "Invalid employee ID format" }, { status: 400 })
     }
 
     if (!employee) {
-      return NextResponse.json(
-        { success: false, message: "Employee not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 })
     }
 
-    const { password, ...employeeData } = employee;
+    // Remove sensitive information
+    const { password, ...employeeData } = employee
 
-    const response = NextResponse.json(
-      { success: true, employee: employeeData },
-      { status: 200 }
-    );
+    // Add cache control headers to prevent caching
+    const headers = new Headers()
+    headers.append("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+    headers.append("Pragma", "no-cache")
+    headers.append("Expires", "0")
 
-    response.headers.set("Cache-Control", "no-store, max-age=0");
-    response.headers.set("Pragma", "no-cache");
-    response.headers.set("Expires", "0");
-
-    return response;
-  } catch (error) {
-    console.error("Error in GET /api/employee/[id]:", error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
-      { status: 500 }
-    );
+      { success: true, employee: employeeData },
+      {
+        status: 200,
+        headers: headers,
+      },
+    )
+  } catch (error) {
+    console.error("Error fetching employee:", error)
+    return NextResponse.json({ success: false, message: "Failed to fetch employee" }, { status: 500 })
   }
 }
-
-export const dynamic = "force-dynamic";
