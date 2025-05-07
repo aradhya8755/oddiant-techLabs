@@ -1,13 +1,25 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 
-export async function GET(request: NextRequest, context: { params: { id: string } }) {
+interface RouteParams {
+  params: {
+    id: string
+  }
+}
+
+export async function GET(
+  request: NextRequest,
+  context: RouteParams
+) {
   try {
     const employeeId = context.params.id
 
     if (!employeeId) {
-      return NextResponse.json({ success: false, message: "Employee ID is required" }, { status: 400 })
+      return NextResponse.json(
+        { success: false, message: "Employee ID is required" }, 
+        { status: 400 }
+      )
     }
 
     // Connect to database
@@ -16,16 +28,22 @@ export async function GET(request: NextRequest, context: { params: { id: string 
     // Find employee by ID
     let employee
     try {
-      employee = await db.collection("employees").findOne({
-        _id: new ObjectId(employeeId),
+      employee = await db.collection("employees").findOne({ 
+        _id: new ObjectId(employeeId) 
       })
     } catch (error) {
       console.error("Error finding employee by ID:", error)
-      return NextResponse.json({ success: false, message: "Invalid employee ID format" }, { status: 400 })
+      return NextResponse.json(
+        { success: false, message: "Invalid employee ID format" }, 
+        { status: 400 }
+      )
     }
 
     if (!employee) {
-      return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 })
+      return NextResponse.json(
+        { success: false, message: "Employee not found" }, 
+        { status: 404 }
+      )
     }
 
     // Remove sensitive information
@@ -34,19 +52,22 @@ export async function GET(request: NextRequest, context: { params: { id: string 
     // Add cache control headers to prevent caching
     const headers = {
       "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-      Pragma: "no-cache",
-      Expires: "0",
+      "Pragma": "no-cache",
+      "Expires": "0"
     }
 
     return NextResponse.json(
       { success: true, employee: employeeData },
       {
         status: 200,
-        headers: headers,
-      },
+        headers: headers
+      }
     )
   } catch (error) {
     console.error("Error fetching employee:", error)
-    return NextResponse.json({ success: false, message: "Failed to fetch employee" }, { status: 500 })
+    return NextResponse.json(
+      { success: false, message: "Failed to fetch employee" }, 
+      { status: 500 }
+    )
   }
 }
