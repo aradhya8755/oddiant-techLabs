@@ -2,34 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
+// Enabling dynamic rendering
+export const dynamic = "force-dynamic";
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id: employeeId } = params;
+    const employeeId = context.params?.id;
 
-    if (!employeeId) {
+    if (!employeeId || !ObjectId.isValid(employeeId)) {
       return NextResponse.json(
-        { success: false, message: "Employee ID is required" },
+        { success: false, message: "Invalid or missing employee ID" },
         { status: 400 }
       );
     }
 
     const { db } = await connectToDatabase();
 
-    let employee;
-    try {
-      employee = await db.collection("employees").findOne({
-        _id: new ObjectId(employeeId),
-      });
-    } catch (error) {
-      console.error("Error finding employee:", error);
-      return NextResponse.json(
-        { success: false, message: "Invalid employee ID format" },
-        { status: 400 }
-      );
-    }
+    const employee = await db.collection("employees").findOne({
+      _id: new ObjectId(employeeId),
+    });
 
     if (!employee) {
       return NextResponse.json(
@@ -58,5 +52,3 @@ export async function GET(
     );
   }
 }
-
-export const dynamic = "force-dynamic";
