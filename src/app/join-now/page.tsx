@@ -6,8 +6,8 @@ import { UserIcon, Briefcase } from "lucide-react"
 export default function JoinNowPage() {
   return (
     <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-center text-white">Join Our Platform</h1>
-      <p className="text-xl text-white text-center mb-12">Choose how you want to join Oddiant Techlabs</p>
+      <h1 className="text-3xl font-bold mb-8 text-center text-black">Join Our Platform</h1>
+      <p className="text-xl text-black text-center mb-12">Choose how you want to join Oddiant Techlabs</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
         {/* User Card */}

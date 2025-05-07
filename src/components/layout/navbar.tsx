@@ -53,18 +53,6 @@ export function Navbar() {
               Home
             </Link>
             <Link
-              href="/company"
-              className="text-white hover:text-gray-300 transition-border hover:border-b-white hover:border-b-2 font-medium transition-colors"
-            >
-              Company
-            </Link>
-            <Link
-              href="/solutions"
-              className="text-white hover:text-gray-300 transition-border hover:border-b-white hover:border-b-2 font-medium transition-colors"
-            >
-              Solutions
-            </Link>
-            <Link
               href="/contact"
               className="text-white hover:text-gray-300 transition-border hover:border-b-white hover:border-b-2 font-medium transition-colors"
             >
@@ -100,20 +88,6 @@ export function Navbar() {
                   onClick={() => setIsOpen(false)}
                 >
                   Home
-                </Link>
-                <Link
-                  href="/company"
-                  className="text-xl font-medium hover:text-gray-300 transition-colors"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Company
-                </Link>
-                <Link
-                  href="/solutions"
-                  className="text-xl font-medium hover:text-gray-300 transition-colors"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Solutions
                 </Link>
                 <Link
                   href="/contact"

@@ -2,8 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import App from "@/components/App"
-import FAQSection from "@/components/FAQSection"
-import TypedText from "@/components/TypedText"
+
 
 export default function Home() {
   return (
@@ -21,9 +20,6 @@ export default function Home() {
 
         <div className="container mx-auto px-4 z-10 text-center">
           <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-            <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300">
-              <TypedText strings={["Empowering Through Personality, Talent & Tech"]} typeSpeed={70} showCursor={true} />
-            </h1>
             <p className="text-xl text-gray-300">
               Innovative IT consulting, expert staffing solutions, and tailored personality development
               programs—delivered to fit your unique business needs.
@@ -112,7 +108,6 @@ export default function Home() {
       {/* FAQ Section */}
       <section className="py-16 bg-gray-100">
         <div className="container mx-auto px-4">
-          <FAQSection />
         </div>
       </section>
 
