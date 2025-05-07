@@ -2,13 +2,19 @@ import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 
-// The correct type for dynamic route parameters in App Router
+// The correct type definition for dynamic route parameters in App Router
+type Params = {
+  params: {
+    id: string
+  }
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: Params
 ) {
   try {
-    const employeeId = params.id
+    const employeeId = context.params.id
 
     if (!employeeId) {
       return NextResponse.json({ success: false, message: "Employee ID is required" }, { status: 400 })
