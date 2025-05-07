@@ -1,20 +1,13 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 
-// The correct type definition for dynamic route parameters in App Router
-type Params = {
-  params: {
-    id: string
-  }
-}
-
 export async function GET(
   request: NextRequest,
-  context: Params
+  { params }: { params: { id: string } }
 ) {
   try {
-    const employeeId = context.params.id
+    const employeeId = params.id
 
     if (!employeeId) {
       return NextResponse.json({ success: false, message: "Employee ID is required" }, { status: 400 })
@@ -50,7 +43,7 @@ export async function GET(
       {
         status: 200,
         headers: headers,
-      },
+      }
     )
   } catch (error) {
     console.error("Error fetching employee:", error)
