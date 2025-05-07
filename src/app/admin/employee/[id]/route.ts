@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
-// Enabling dynamic rendering
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const employeeId = context.params?.id;
+    const url = new URL(request.url);
+    const segments = url.pathname.split("/");
+    const employeeId = segments[segments.length - 1];
 
     if (!employeeId || !ObjectId.isValid(employeeId)) {
       return NextResponse.json(
