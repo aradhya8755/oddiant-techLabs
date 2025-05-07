@@ -7,43 +7,41 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const segments = url.pathname.split("/");
-    const employeeId = segments[segments.length - 1];
+    const id = url.pathname.split("/").pop();
 
-    if (!employeeId || !ObjectId.isValid(employeeId)) {
+    if (!id || !ObjectId.isValid(id)) {
       return NextResponse.json(
-        { success: false, message: "Invalid or missing employee ID" },
+        { success: false, message: "Invalid or missing ID" },
         { status: 400 }
       );
     }
 
     const { db } = await connectToDatabase();
 
-    const employee = await db.collection("employees").findOne({
-      _id: new ObjectId(employeeId),
+    const appeal = await db.collection("appeals").findOne({
+      _id: new ObjectId(id),
     });
 
-    if (!employee) {
+    if (!appeal) {
       return NextResponse.json(
-        { success: false, message: "Employee not found" },
+        { success: false, message: "Appeal not found" },
         { status: 404 }
       );
     }
 
-    const { password, ...employeeData } = employee;
-
     const response = NextResponse.json(
-      { success: true, employee: employeeData },
+      { success: true, appeal },
       { status: 200 }
     );
 
-    response.headers.set("Cache-Control", "no-store, max-age=0");
+    // Optional: Prevent caching
+    response.headers.set("Cache-Control", "no-store");
     response.headers.set("Pragma", "no-cache");
     response.headers.set("Expires", "0");
 
     return response;
   } catch (error) {
-    console.error("Error in GET /api/employee/[id]:", error);
+    console.error("Error in GET /api/employee/appeal/[id]:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
