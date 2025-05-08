@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Search, Calendar, Download } from "lucide-react"
+import { ArrowLeft, Search, Calendar, Download, RefreshCw } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -40,57 +40,59 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedApplicants, setSelectedApplicants] = useState<string[]>([])
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true)
+
+      // Fetch job details
+      const jobResponse = await fetch(`/api/employee/jobs/${jobId}`)
+      if (!jobResponse.ok) {
+        throw new Error("Failed to fetch job details")
+      }
+      const jobData = await jobResponse.json()
+      setJob(jobData.job)
+
+      // Fetch applicants for this job
+      const applicantsResponse = await fetch(`/api/employee/jobs/${jobId}/applicants`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      })
+
+      if (!applicantsResponse.ok) {
+        throw new Error("Failed to fetch applicants")
+      }
+
+      const applicantsData = await applicantsResponse.json()
+
+      // Format the applied date for display
+      const formattedApplicants = applicantsData.applicants.map((applicant: any) => ({
+        ...applicant,
+        appliedDate: applicant.appliedDate
+          ? new Date(applicant.appliedDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          : "Unknown",
+      }))
+
+      setApplicants(formattedApplicants)
+      toast.success("Data refreshed successfully")
+    } catch (error) {
+      console.error("Error fetching data:", error)
+      toast.error("Failed to load data")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true)
-
-        // Fetch job details
-        const jobResponse = await fetch(`/api/employee/jobs/${jobId}`)
-        if (!jobResponse.ok) {
-          throw new Error("Failed to fetch job details")
-        }
-        const jobData = await jobResponse.json()
-        setJob(jobData.job)
-
-        // Fetch applicants for this job
-        const applicantsResponse = await fetch(`/api/employee/jobs/${jobId}/applicants`, {
-          cache: "no-store",
-          headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
-        })
-
-        if (!applicantsResponse.ok) {
-          throw new Error("Failed to fetch applicants")
-        }
-
-        const applicantsData = await applicantsResponse.json()
-
-        // Format the applied date for display
-        const formattedApplicants = applicantsData.applicants.map((applicant: any) => ({
-          ...applicant,
-          appliedDate: applicant.appliedDate
-            ? new Date(applicant.appliedDate).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })
-            : "Unknown",
-        }))
-
-        setApplicants(formattedApplicants)
-      } catch (error) {
-        console.error("Error fetching data:", error)
-        toast.error("Failed to load data")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     fetchData()
   }, [jobId])
 
@@ -119,6 +121,12 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
       // Otherwise, select all
       setSelectedApplicants(filteredApplicants.map((applicant) => applicant._id))
     }
+  }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await fetchData()
+    setIsRefreshing(false)
   }
 
   const downloadExcel = async () => {
@@ -224,6 +232,15 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
                 </CardDescription>
               </div>
               <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                  {isRefreshing ? "Refreshing..." : "Refresh"}
+                </Button>
                 <Button
                   variant="outline"
                   onClick={downloadExcel}
