@@ -55,12 +55,34 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
         setJob(jobData.job)
 
         // Fetch applicants for this job
-        const applicantsResponse = await fetch(`/api/employee/jobs/${jobId}/applicants`)
+        const applicantsResponse = await fetch(`/api/employee/jobs/${jobId}/applicants`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        })
+
         if (!applicantsResponse.ok) {
           throw new Error("Failed to fetch applicants")
         }
+
         const applicantsData = await applicantsResponse.json()
-        setApplicants(applicantsData.applicants)
+
+        // Format the applied date for display
+        const formattedApplicants = applicantsData.applicants.map((applicant: any) => ({
+          ...applicant,
+          appliedDate: applicant.appliedDate
+            ? new Date(applicant.appliedDate).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })
+            : "Unknown",
+        }))
+
+        setApplicants(formattedApplicants)
       } catch (error) {
         console.error("Error fetching data:", error)
         toast.error("Failed to load data")
@@ -74,9 +96,9 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
 
   const filteredApplicants = applicants.filter(
     (applicant) =>
-      applicant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      applicant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      applicant.role.toLowerCase().includes(searchTerm.toLowerCase()),
+      applicant.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      applicant.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      applicant.role?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const handleSelectApplicant = (applicantId: string) => {
@@ -262,7 +284,7 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
                           src={applicant.avatar || "/placeholder.svg?height=32&width=32"}
                           alt={applicant.name}
                         />
-                        <AvatarFallback>{applicant.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{applicant.name?.charAt(0) || "?"}</AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="font-medium">{applicant.name}</p>

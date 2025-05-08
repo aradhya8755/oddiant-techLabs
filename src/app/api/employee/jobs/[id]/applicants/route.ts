@@ -24,34 +24,65 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ message: "Job not found" }, { status: 404 })
     }
 
-    // Find all candidates who have applied to this job
-    // First, get all applications for this job
+    // Find all applications for this specific job
     const applications = await db
       .collection("job_applications")
       .find({ jobId: new ObjectId(jobId) })
       .toArray()
 
+    // If no applications found, return empty array
+    if (applications.length === 0) {
+      return NextResponse.json(
+        { success: true, applicants: [] },
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        },
+      )
+    }
+
     // Extract candidate IDs from applications
     const candidateIds = applications.map((app) => app.candidateId)
 
     // Find all candidates with these IDs
-    let applicants = []
-    if (candidateIds.length > 0) {
-      applicants = await db
-        .collection("candidates")
-        .find({ _id: { $in: candidateIds } })
-        .toArray()
-    }
+    const candidates = await db
+      .collection("candidates")
+      .find({ _id: { $in: candidateIds } })
+      .toArray()
 
-    // If no direct applications found, fall back to the previous approach
-    if (applicants.length === 0) {
-      applicants = await db
-        .collection("candidates")
-        .find({
-          $or: [{ jobId: new ObjectId(jobId) }, { jobId: jobId }, { role: { $regex: new RegExp(job.jobTitle, "i") } }],
-        })
-        .toArray()
-    }
+    // Create a map of candidate ID to candidate data for quick lookup
+    const candidateMap = new Map()
+    candidates.forEach((candidate) => {
+      candidateMap.set(candidate._id.toString(), candidate)
+    })
+
+    // Create a map of application data by candidate ID
+    const applicationMap = new Map()
+    applications.forEach((app) => {
+      applicationMap.set(app.candidateId.toString(), {
+        status: app.status,
+        appliedDate: app.appliedDate,
+        lastComment: app.lastComment || null,
+      })
+    })
+
+    // Combine candidate and application data
+    const applicants = candidates.map((candidate) => {
+      const candidateId = candidate._id.toString()
+      const applicationData = applicationMap.get(candidateId) || {}
+
+      return {
+        ...candidate,
+        // Override with job-specific application data
+        status: applicationData.status || candidate.status,
+        appliedDate: applicationData.appliedDate ? new Date(applicationData.appliedDate).toISOString() : null,
+        lastComment: applicationData.lastComment || candidate.lastComment,
+      }
+    })
 
     // Add cache control headers to prevent caching
     const headers = new Headers()

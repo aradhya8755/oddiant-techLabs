@@ -14,8 +14,20 @@ export default function ApplicationSuccessPage({ params }: { params: Promise<{ i
   const jobId = resolvedParams.id
   const [job, setJob] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [applicationType, setApplicationType] = useState<"new" | "existing">("new")
 
   useEffect(() => {
+    // Check if this was a quick sign-in application
+    const checkApplicationType = () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const type = urlParams.get("type")
+      if (type === "existing") {
+        setApplicationType("existing")
+      }
+    }
+
+    checkApplicationType()
+
     const fetchJob = async () => {
       try {
         setIsLoading(true)
@@ -57,7 +69,14 @@ export default function ApplicationSuccessPage({ params }: { params: Promise<{ i
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center text-gray-600 dark:text-gray-400">
-              <p>We have received your application and will review it shortly.</p>
+              {applicationType === "existing" ? (
+                <p>
+                  We have received your application using your existing profile. Your application has been automatically
+                  submitted for this position.
+                </p>
+              ) : (
+                <p>We have received your application and will review it shortly.</p>
+              )}
               <p className="mt-2">
                 If your qualifications match our requirements, our recruitment team will contact you for the next steps.
               </p>
