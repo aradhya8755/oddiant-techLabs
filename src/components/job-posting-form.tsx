@@ -651,7 +651,13 @@ const inappropriateWords = [
   "masturbate",
   "orgasm",
   "cum",
-
+  "ejaculate",
+  "fap",
+  "fapping",
+  "nigga",
+  "nigger",
+  "asshole",
+  
   // Hindi inappropriate words (romanized)
   "chutiya",
   "bhosdi",
@@ -674,6 +680,12 @@ const inappropriateWords = [
   "kutte",
   "kamina",
   "chutia",
+  "harami",
+  "bhen ki",
+  "bhen ki lund",
+  "bhen ki gaand",
+  "bhen ki chudai",
+  "haramzada"
 ]
 
 interface JobPostingFormProps {

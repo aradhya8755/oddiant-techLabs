@@ -27,7 +27,7 @@ export function Footer() {
   }
 
   return (
-    <footer className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 z-0 text-white py-12">
+    <footer className="bg-gradient-to-r from-black to-blue-950  z-0 text-white py-12">
       <div className="container mx-auto px-4">
         {/* Newsletter Subscription */}
         <div className="mb-12 pb-10 border-b border-black">

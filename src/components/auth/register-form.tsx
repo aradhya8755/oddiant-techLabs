@@ -48,6 +48,7 @@ export type FormData = {
     department: string
     companyName: string
     tenure: string
+    professionalSummary: string
   }>
   currentSalary: string
   expectedSalary: string
@@ -98,12 +99,12 @@ const initialFormData: FormData = {
 
   // Educational Qualifications
   education: [{ level: "", mode: "", degree: "", school: "", startingYear: "", endingYear: "", percentage: "" }],
-  certifications: [""],
+  certifications: [], // Changed from [""] to []
 
   // Professional Experience
   professionalSummary: "",
-  totalExperience: "",
-  experience: [{ title: "", department: "", companyName: "", tenure: "" }],
+  totalExperience: "", // This will be filled by the user
+  experience: [{ title: "", department: "", companyName: "", tenure: "", professionalSummary: "" }],
   currentSalary: "",
   expectedSalary: "",
   noticePeriod: "",
@@ -122,7 +123,7 @@ const initialFormData: FormData = {
   },
 
   // Additional Details
-  skills: [""],
+  skills: [], // Changed from [""] to []
   portfolioLink: "",
   socialMediaLink: "",
   resume: null,
@@ -169,22 +170,66 @@ export default function RegisterForm() {
       // Create FormData object for file uploads
       const formDataObj = new FormData()
 
-      // Add all text fields
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key !== "resume" && key !== "videoResume" && key !== "audioBiodata" && key !== "photograph") {
-          if (typeof value === "object" && value !== null && !(value instanceof File)) {
-            formDataObj.append(key, JSON.stringify(value))
-          } else if (value !== null) {
-            formDataObj.append(key, value as string | Blob)
-          }
-        }
-      })
+      // Add basic text fields
+      formDataObj.append("salutation", formData.salutation)
+      formDataObj.append("firstName", formData.firstName)
+      formDataObj.append("middleName", formData.middleName || "")
+      formDataObj.append("lastName", formData.lastName)
+      formDataObj.append("email", formData.email)
+      formDataObj.append("password", formData.password)
+      formDataObj.append("phone", formData.phone)
+      formDataObj.append("alternativePhone", formData.alternativePhone || "")
+      formDataObj.append("dob", formData.dob)
+      formDataObj.append("gender", formData.gender)
+      formDataObj.append("currentCity", formData.currentCity)
+      formDataObj.append("currentState", formData.currentState)
+      formDataObj.append("pincode", formData.pincode)
+      formDataObj.append("profileOutline", formData.profileOutline || "")
 
-      // Add file fields
+      // Add array and object fields with proper JSON stringification
+      formDataObj.append("education", JSON.stringify(formData.education))
+      formDataObj.append("certifications", JSON.stringify(formData.certifications.filter((cert) => cert !== "")))
+      formDataObj.append("experience", JSON.stringify(formData.experience))
+      formDataObj.append("skills", JSON.stringify(formData.skills.filter((skill) => skill !== "")))
+
+      // FIXED: Ensure assets is properly structured as a separate object
+      formDataObj.append("assets", JSON.stringify(formData.assets))
+
+      // Explicitly ensure totalExperience is properly set
+      // Make sure it's a string and not empty
+      const totalExp = formData.totalExperience ? formData.totalExperience.toString() : "0"
+      formDataObj.append("totalExperience", totalExp)
+
+      // Add other professional fields
+      formDataObj.append("professionalSummary", formData.professionalSummary || "")
+      formDataObj.append("currentSalary", formData.currentSalary || "")
+      formDataObj.append("expectedSalary", formData.expectedSalary || "")
+      formDataObj.append("noticePeriod", formData.noticePeriod || "")
+      formDataObj.append("shiftPreference", JSON.stringify(formData.shiftPreference))
+      formDataObj.append("preferenceCities", JSON.stringify(formData.preferenceCities))
+
+      // Add additional text fields
+      formDataObj.append("portfolioLink", formData.portfolioLink || "")
+      formDataObj.append("socialMediaLink", formData.socialMediaLink || "")
+
+      // Add file fields - these will be stored in the documents object
       if (formData.resume) formDataObj.append("resume", formData.resume)
       if (formData.videoResume) formDataObj.append("videoResume", formData.videoResume)
       if (formData.audioBiodata) formDataObj.append("audioBiodata", formData.audioBiodata)
       if (formData.photograph) formDataObj.append("photograph", formData.photograph)
+
+      // Log the form data for debugging
+      console.log("Submitting form data:", {
+        certifications: formData.certifications.filter((cert) => cert !== ""),
+        totalExperience: totalExp, // Log the actual value being sent
+        currentSalary: formData.currentSalary,
+        expectedSalary: formData.expectedSalary,
+        noticePeriod: formData.noticePeriod,
+        shiftPreference: formData.shiftPreference,
+        preferenceCities: formData.preferenceCities,
+        assets: formData.assets, // Log the assets object
+        skills: formData.skills.filter((skill) => skill !== ""),
+      })
 
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -201,6 +246,7 @@ export default function RegisterForm() {
       router.push(`/auth/verify?email=${encodeURIComponent(formData.email)}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Registration failed")
+      console.error("Registration error:", error)
     } finally {
       setIsSubmitting(false)
     }

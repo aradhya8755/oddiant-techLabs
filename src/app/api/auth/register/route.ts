@@ -117,8 +117,35 @@ export async function POST(request: NextRequest) {
       // Parse JSON fields
       const education = formData.get("education") ? JSON.parse(formData.get("education") as string) : []
       const experience = formData.get("experience") ? JSON.parse(formData.get("experience") as string) : []
-      const assets = formData.get("assets") ? JSON.parse(formData.get("assets") as string) : {}
       const skills = formData.get("skills") ? JSON.parse(formData.get("skills") as string) : []
+
+      // Parse the previously missing fields
+      const certifications = formData.get("certifications") ? JSON.parse(formData.get("certifications") as string) : []
+      const shiftPreference = formData.get("shiftPreference")
+        ? JSON.parse(formData.get("shiftPreference") as string)
+        : []
+      const preferenceCities = formData.get("preferenceCities")
+        ? JSON.parse(formData.get("preferenceCities") as string)
+        : []
+
+      // FIXED: Parse assets separately to ensure it's a separate object
+      const assets = formData.get("assets")
+        ? JSON.parse(formData.get("assets") as string)
+        : {
+            bike: false,
+            wifi: false,
+            laptop: false,
+            panCard: false,
+            aadhar: false,
+            bankAccount: false,
+            idProof: false,
+          }
+
+      // Get totalExperience directly from formData
+      const totalExperience = formData.get("totalExperience") as string
+
+      // Log the totalExperience value for debugging
+      console.log("Total Experience from form:", totalExperience)
 
       // Generate OTP for email verification
       const otp = generateOTP()
@@ -128,7 +155,7 @@ export async function POST(request: NextRequest) {
       // Hash password
       const hashedPassword = await hashPassword(password)
 
-      // Create user document
+      // Create user document with all fields
       const newUser = {
         email,
         password: hashedPassword,
@@ -145,9 +172,18 @@ export async function POST(request: NextRequest) {
         pincode: (formData.get("pincode") as string) || "",
         profileOutline: (formData.get("profileOutline") as string) || "",
         education,
+        certifications,
         experience,
-        assets,
-        documents: fileUploads,
+        totalExperience: totalExperience || "0", // Default to "0" if empty
+        professionalSummary: (formData.get("professionalSummary") as string) || "",
+        currentSalary: (formData.get("currentSalary") as string) || "",
+        expectedSalary: (formData.get("expectedSalary") as string) || "",
+        noticePeriod: (formData.get("noticePeriod") as string) || "",
+        shiftPreference,
+        preferenceCities,
+        // FIXED: Ensure assets and documents are separate objects
+        assets, // This is the assets object
+        documents: fileUploads, // This is the documents object
         skills,
         portfolioLink: (formData.get("portfolioLink") as string) || "",
         socialMediaLink: (formData.get("socialMediaLink") as string) || "",
@@ -222,10 +258,35 @@ export async function POST(request: NextRequest) {
       // Hash password
       const hashedPassword = await hashPassword(body.password)
 
-      // Create user document
+      // FIXED: Ensure totalExperience is properly handled
+      const totalExperience = body.totalExperience || "0"
+
+      // FIXED: Ensure assets and documents are separate objects
+      const assets = body.assets || {
+        bike: false,
+        wifi: false,
+        laptop: false,
+        panCard: false,
+        aadhar: false,
+        bankAccount: false,
+        idProof: false,
+      }
+
+      const documents = body.documents || {}
+
+      // Make sure all fields are included
       const newUser = {
         ...body,
         password: hashedPassword,
+        totalExperience, // Use the fixed totalExperience value
+        assets, // Ensure assets is a separate object
+        documents, // Ensure documents is a separate object
+        certifications: body.certifications || [],
+        currentSalary: body.currentSalary || "",
+        expectedSalary: body.expectedSalary || "",
+        noticePeriod: body.noticePeriod || "",
+        shiftPreference: body.shiftPreference || [],
+        preferenceCities: body.preferenceCities || [],
         verified: false,
         otp,
         otpExpiry,

@@ -85,7 +85,7 @@ export default function Home() {
                 matter. Our commitment to excellence has earned us the trust of 20+ global clients who rely on us for
                 dependable, top-tier service.
                 <br />
-                <br /> 📈 1234 Placements & Counting We take pride in connecting talent with opportunity—making over
+                <br /> 📈 234 Placements & Counting We take pride in connecting talent with opportunity—making over
                 1,200 successful placements and transforming careers around the world.
                 <br /> <br />🌍 2 Strategic Delivery Centers Our dual-location model enables us to offer seamless
                 support and agile solutions to clients across the globe.
