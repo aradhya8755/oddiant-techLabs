@@ -31,7 +31,6 @@ import {
   PencilLine,
   Save,
   X,
-  Plus,
   GraduationCap,
   Award,
   FileCheck,
@@ -54,7 +53,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 
 interface StudentData {
   _id: string
@@ -1072,6 +1070,7 @@ export default function StudentDashboard() {
                             student.avatar ||
                             student.documents?.photograph?.url ||
                             "/placeholder.svg?height=128&width=128" ||
+                            "/placeholder.svg" ||
                             "/placeholder.svg"
                           }
                           alt={`${student.firstName} ${student.lastName}`}
@@ -1467,9 +1466,8 @@ export default function StudentDashboard() {
                                       <Badge className="bg-green-100 text-green-800">Current</Badge>
                                     )}
                                   </div>
-                                  <p className="text-gray-600">
-                                  Company: {exp.companyName || "Not specified"}</p> <p>Department: {exp.department && ` ${exp.department}`}</p>
-                                  
+                                  <p className="text-gray-600">Company: {exp.companyName || "Not specified"}</p>{" "}
+                                  <p>Department: {exp.department && ` ${exp.department}`}</p>
                                   {exp.location && <p className="text-sm text-gray-700">{exp.location}</p>}
                                   <div className="flex justify-between mt-1">
                                     {exp.tenure && (
@@ -1481,7 +1479,7 @@ export default function StudentDashboard() {
                                   </div>
                                   {(exp.professionalSummary || exp.summary) && (
                                     <p className="mt-2 text-sm whitespace-pre-line">
-                                     Professional Summary: {exp.professionalSummary || exp.summary}
+                                      Professional Summary: {exp.professionalSummary || exp.summary}
                                     </p>
                                   )}
                                   <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
@@ -1812,123 +1810,6 @@ export default function StudentDashboard() {
                   <Separator />
 
                   <div>
-                    <h3 className="text-lg font-medium mb-4">Job Preferences</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="shiftPreference">Shift Preference</Label>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {["day", "night", "flexible"].map((shift) => (
-                            <Badge
-                              key={shift}
-                              variant={settings?.shiftPreference === shift ? "default" : "outline"}
-                              className="cursor-pointer"
-                              onClick={() => setSettings((prev) => (prev ? { ...prev, shiftPreference: shift } : prev))}
-                            >
-                              {shift.charAt(0).toUpperCase() + shift.slice(1)}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="preferredLocations">Preferred Locations</Label>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {settings?.preferredLocations?.map((location, index) => (
-                            <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                              {location}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-4 w-4 p-0 ml-1"
-                                onClick={() => {
-                                  setSettings((prev) => {
-                                    if (!prev) return prev
-                                    return {
-                                      ...prev,
-                                      preferredLocations: prev.preferredLocations.filter((_, i) => i !== index),
-                                    }
-                                  })
-                                }}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </Badge>
-                          ))}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7"
-                            onClick={() => {
-                              const location = prompt("Enter preferred location")
-                              if (location) {
-                                setSettings((prev) => {
-                                  if (!prev) return prev
-                                  return {
-                                    ...prev,
-                                    preferredLocations: [...(prev.preferredLocations || []), location],
-                                  }
-                                })
-                              }
-                            }}
-                          >
-                            <Plus className="h-3.5 w-3.5 mr-1" />
-                            Add Location
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="preferredJobTypes">Preferred Job Types</Label>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {settings?.preferredJobTypes?.map((jobType, index) => (
-                            <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                              {jobType}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-4 w-4 p-0 ml-1"
-                                onClick={() => {
-                                  setSettings((prev) => {
-                                    if (!prev) return prev
-                                    return {
-                                      ...prev,
-                                      preferredJobTypes: prev.preferredJobTypes.filter((_, i) => i !== index),
-                                    }
-                                  })
-                                }}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </Badge>
-                          ))}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7"
-                            onClick={() => {
-                              const jobType = prompt("Enter preferred job type (e.g., Full-time, Part-time, Remote)")
-                              if (jobType) {
-                                setSettings((prev) => {
-                                  if (!prev) return prev
-                                  return {
-                                    ...prev,
-                                    preferredJobTypes: [...(prev.preferredJobTypes || []), jobType],
-                                  }
-                                })
-                              }
-                            }}
-                          >
-                            <Plus className="h-3.5 w-3.5 mr-1" />
-                            Add Job Type
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
                     <h3 className="text-lg font-medium mb-4">Security</h3>
                     <div className="space-y-4">
                       <Button variant="outline" onClick={() => router.push("/student/change-password")}>
@@ -1942,7 +1823,31 @@ export default function StudentDashboard() {
                   <div>
                     <h3 className="text-lg font-medium mb-4">Account Actions</h3>
                     <div className="space-y-4">
-                      <Button variant="destructive">Deactivate Account</Button>
+                      <Button
+                        variant="destructive"
+                        onClick={async () => {
+                          if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+                            try {
+                              const response = await fetch("/api/student/delete-account", {
+                                method: "DELETE",
+                              })
+
+                              if (response.ok) {
+                                toast.success("Account deleted successfully")
+                                router.push("/auth/login")
+                              } else {
+                                const data = await response.json()
+                                toast.error(data.message || "Failed to delete account")
+                              }
+                            } catch (error) {
+                              console.error("Error deleting account:", error)
+                              toast.error("An error occurred while deleting your account")
+                            }
+                          }
+                        }}
+                      >
+                        Delete Account
+                      </Button>
                     </div>
                   </div>
 
