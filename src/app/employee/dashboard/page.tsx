@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast, Toaster } from "sonner"
 import {
@@ -2064,6 +2065,7 @@ function EmployeeDashboard() {
                         value={passwordInfo.currentPassword}
                         onChange={(e) => setPasswordInfo({ ...passwordInfo, currentPassword: e.target.value })}
                       />
+                      <Link href="/auth/employee/forgot-password" className="text-blue-600 hover:underline hover:text-opacity-85 text-base">Forgot Password? Click Here</Link>
                     </div>
                     <div></div>
                     <div className="space-y-2">
