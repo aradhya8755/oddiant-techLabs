@@ -2065,7 +2065,7 @@ function EmployeeDashboard() {
                         value={passwordInfo.currentPassword}
                         onChange={(e) => setPasswordInfo({ ...passwordInfo, currentPassword: e.target.value })}
                       />
-                      <Link href="/auth/employee/forgot-password" className="text-blue-600 hover:underline hover:text-opacity-85 text-base">Forgot Password? Click Here</Link>
+                      <Link href="/auth/employee/forgot-password" className="text-blue-600 hover:underline hover:text-opacity-85 text-base">Forgot Password? Click Here </Link>
                     </div>
                     <div></div>
                     <div className="space-y-2">
