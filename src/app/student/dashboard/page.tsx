@@ -1,5 +1,7 @@
 "use client"
 
+import { Label } from "@/components/ui/label"
+
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
@@ -46,6 +48,9 @@ import {
   Layers,
   FileSymlink,
   BriefcaseIcon,
+  CalendarIcon,
+  Hash,
+  SlidersHorizontal,
 } from "lucide-react"
 import { MapPinIcon } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -282,6 +287,17 @@ export default function StudentDashboard() {
   const [isEditingAvatar, setIsEditingAvatar] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // New filters for My Applications section
+  const [applicationSearchTerm, setApplicationSearchTerm] = useState("")
+  const [applicationFilterLocation, setApplicationFilterLocation] = useState("")
+  const [applicationFilterStatus, setApplicationFilterStatus] = useState("")
+  const [applicationFilterJobTitle, setApplicationFilterJobTitle] = useState("")
+  const [applicationFilterCompany, setApplicationFilterCompany] = useState("")
+  const [applicationFilterJobId, setApplicationFilterJobId] = useState("")
+  const [applicationDateFrom, setApplicationDateFrom] = useState("")
+  const [applicationDateTo, setApplicationDateTo] = useState("")
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -652,6 +668,80 @@ export default function StudentDashboard() {
     return matchesSearch && matchesLocation && matchesJobType
   })
 
+  // Filter applications based on all filter criteria
+  const filteredApplications = applications.filter((application) => {
+    // Main search term (searches across multiple fields)
+    const matchesMainSearch = !applicationSearchTerm
+      ? true
+      : (application.job?.jobTitle &&
+          application.job.jobTitle.toLowerCase().includes(applicationSearchTerm.toLowerCase())) ||
+        (application.job?.companyName &&
+          application.job.companyName.toLowerCase().includes(applicationSearchTerm.toLowerCase())) ||
+        (application._id && application._id.toLowerCase().includes(applicationSearchTerm.toLowerCase())) ||
+        (application.jobId && application.jobId.toLowerCase().includes(applicationSearchTerm.toLowerCase()))
+
+    // Location filter
+    const matchesLocation = !applicationFilterLocation
+      ? true
+      : application.job?.jobLocation &&
+        application.job.jobLocation.toLowerCase().includes(applicationFilterLocation.toLowerCase())
+
+    // Status filter
+    const matchesStatus = !applicationFilterStatus
+      ? true
+      : application.status.toLowerCase() === applicationFilterStatus.toLowerCase()
+
+    // Job title filter (advanced)
+    const matchesJobTitle = !applicationFilterJobTitle
+      ? true
+      : application.job?.jobTitle &&
+        application.job.jobTitle.toLowerCase().includes(applicationFilterJobTitle.toLowerCase())
+
+    // Company filter (advanced)
+    const matchesCompany = !applicationFilterCompany
+      ? true
+      : application.job?.companyName &&
+        application.job.companyName.toLowerCase().includes(applicationFilterCompany.toLowerCase())
+
+    // Job ID filter (advanced)
+    const matchesJobId = !applicationFilterJobId
+      ? true
+      : (application.jobId && application.jobId.toLowerCase().includes(applicationFilterJobId.toLowerCase())) ||
+        (application._id && application._id.toLowerCase().includes(applicationFilterJobId.toLowerCase()))
+
+    // Date range filter (advanced)
+    let matchesDateRange = true
+    if (applicationDateFrom || applicationDateTo) {
+      const appliedDate = new Date(application.appliedDate)
+
+      if (applicationDateFrom) {
+        const fromDate = new Date(applicationDateFrom)
+        if (appliedDate < fromDate) {
+          matchesDateRange = false
+        }
+      }
+
+      if (applicationDateTo) {
+        const toDate = new Date(applicationDateTo)
+        // Set to end of day
+        toDate.setHours(23, 59, 59, 999)
+        if (appliedDate > toDate) {
+          matchesDateRange = false
+        }
+      }
+    }
+
+    return (
+      matchesMainSearch &&
+      matchesLocation &&
+      matchesStatus &&
+      matchesJobTitle &&
+      matchesCompany &&
+      matchesJobId &&
+      matchesDateRange
+    )
+  })
+
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case "applied":
@@ -753,6 +843,19 @@ export default function StudentDashboard() {
 
     // If certifications is an array of objects, extract the name property
     return (student.certifications as Array<{ name: string }>).map((cert) => cert.name)
+  }
+
+  // Reset all application filters
+  const resetApplicationFilters = () => {
+    setApplicationSearchTerm("")
+    setApplicationFilterLocation("")
+    setApplicationFilterStatus("")
+    setApplicationFilterJobTitle("")
+    setApplicationFilterCompany("")
+    setApplicationFilterJobId("")
+    setApplicationDateFrom("")
+    setApplicationDateTo("")
+    setShowAdvancedFilters(false)
   }
 
   if (isLoading) {
@@ -1058,6 +1161,158 @@ export default function StudentDashboard() {
                 <CardDescription>Track the status of your job applications</CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Main Filters */}
+                <div className="mb-6 space-y-4">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                      <Input
+                        placeholder="Search by job title, company, or job ID..."
+                        className="pl-10"
+                        value={applicationSearchTerm}
+                        onChange={(e) => setApplicationSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="relative w-full md:w-40">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                        <Input
+                          placeholder="Location"
+                          className="pl-10"
+                          value={applicationFilterLocation}
+                          onChange={(e) => setApplicationFilterLocation(e.target.value)}
+                        />
+                      </div>
+                      <div className="relative w-full md:w-40">
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                        <select
+                          className="w-full h-10 pl-10 pr-4 rounded-md border border-input bg-background text-sm"
+                          value={applicationFilterStatus}
+                          onChange={(e) => setApplicationFilterStatus(e.target.value)}
+                        >
+                          <option value="">Status</option>
+                          <option value="applied">Applied</option>
+                          <option value="shortlisted">Shortlisted</option>
+                          <option value="interview">Interview</option>
+                          <option value="rejected">Rejected</option>
+                          <option value="hired">Hired</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Advanced Filters Toggle */}
+                  <div className="flex justify-between items-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                      className="text-blue-600"
+                    >
+                      <SlidersHorizontal className="h-4 w-4 mr-2" />
+                      {showAdvancedFilters ? "Hide Advanced Filters" : "Show Advanced Filters"}
+                    </Button>
+
+                    {(applicationSearchTerm ||
+                      applicationFilterLocation ||
+                      applicationFilterStatus ||
+                      applicationFilterJobTitle ||
+                      applicationFilterCompany ||
+                      applicationFilterJobId ||
+                      applicationDateFrom ||
+                      applicationDateTo) && (
+                      <Button variant="outline" size="sm" onClick={resetApplicationFilters}>
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Advanced Filters */}
+                  {showAdvancedFilters && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border">
+                      <div>
+                        <Label htmlFor="job-title" className="text-sm font-medium mb-1 block">
+                          Job Title
+                        </Label>
+                        <div className="relative">
+                          <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                          <Input
+                            id="job-title"
+                            placeholder="Filter by job title"
+                            className="pl-10"
+                            value={applicationFilterJobTitle}
+                            onChange={(e) => setApplicationFilterJobTitle(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="company" className="text-sm font-medium mb-1 block">
+                          Company
+                        </Label>
+                        <div className="relative">
+                          <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                          <Input
+                            id="company"
+                            placeholder="Filter by company"
+                            className="pl-10"
+                            value={applicationFilterCompany}
+                            onChange={(e) => setApplicationFilterCompany(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="job-id" className="text-sm font-medium mb-1 block">
+                          Job ID
+                        </Label>
+                        <div className="relative">
+                          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                          <Input
+                            id="job-id"
+                            placeholder="Filter by job ID"
+                            className="pl-10"
+                            value={applicationFilterJobId}
+                            onChange={(e) => setApplicationFilterJobId(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="date-from" className="text-sm font-medium mb-1 block">
+                          Applied From
+                        </Label>
+                        <div className="relative">
+                          <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                          <Input
+                            id="date-from"
+                            type="date"
+                            className="pl-10"
+                            value={applicationDateFrom}
+                            onChange={(e) => setApplicationDateFrom(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="date-to" className="text-sm font-medium mb-1 block">
+                          Applied To
+                        </Label>
+                        <div className="relative">
+                          <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                          <Input
+                            id="date-to"
+                            type="date"
+                            className="pl-10"
+                            value={applicationDateTo}
+                            onChange={(e) => setApplicationDateTo(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {isLoadingApplications ? (
                   <div className="flex justify-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -1069,9 +1324,18 @@ export default function StudentDashboard() {
                     <p className="text-gray-500 mb-4">You haven't applied to any jobs yet</p>
                     <Button onClick={() => handleTabChange("jobs")}>Browse Jobs</Button>
                   </div>
+                ) : filteredApplications.length === 0 ? (
+                  <div className="text-center py-12 border rounded-lg">
+                    <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">No matching applications</h3>
+                    <p className="text-gray-500 mb-4">No applications match your current filters</p>
+                    <Button variant="outline" onClick={resetApplicationFilters}>
+                      Clear Filters
+                    </Button>
+                  </div>
                 ) : (
                   <div className="space-y-4">
-                    {applications.map((application) => (
+                    {filteredApplications.map((application) => (
                       <Card key={application._id} className="overflow-hidden hover:shadow-md transition-shadow">
                         <CardContent className="p-6">
                           <div className="flex justify-between items-start">
@@ -1080,9 +1344,12 @@ export default function StudentDashboard() {
                                 {application.job?.jobTitle || "Unknown Job"}
                               </h3>
                               <p className="text-gray-600 mb-2">{application.job?.companyName || "Unknown Company"}</p>
-                              <div className="flex items-center text-sm text-gray-500 mb-4">
+                              <div className="flex items-center text-sm text-gray-500 mb-2">
                                 <MapPin className="h-4 w-4 mr-1" />
                                 {application.job?.jobLocation || "Unknown Location"}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Job ID: {application.jobId || application._id}
                               </div>
                             </div>
                             <div className="text-right">
@@ -1129,6 +1396,7 @@ export default function StudentDashboard() {
                             student.avatar ||
                             student.documents?.photograph?.url ||
                             "/placeholder.svg?height=128&width=128" ||
+                            "/placeholder.svg" ||
                             "/placeholder.svg"
                           }
                           alt={`${student.firstName} ${student.lastName}`}

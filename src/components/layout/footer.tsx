@@ -9,18 +9,41 @@ import { Input } from "@/components/ui/input"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faXTwitter, faFacebookF, faLinkedinIn, faInstagram } from "@fortawesome/free-brands-svg-icons"
 import { Mail, Phone, MapPin, ChevronRight, ArrowRight, ExternalLink } from "lucide-react"
+import { toast } from "sonner"
 
 export function Footer() {
   const [email, setEmail] = useState("")
-  const [subscribed, setSubscribed] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (email) {
-      console.log(`Subscribing email: ${email}`)
-      setSubscribed(true)
+
+    if (!email) return
+
+    try {
+      setIsSubmitting(true)
+
+      const response = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to subscribe")
+      }
+
+      toast.success("Thank you for subscribing to our newsletter!")
       setEmail("")
-      setTimeout(() => setSubscribed(false), 3000)
+    } catch (error) {
+      console.error("Subscription error:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to subscribe. Please try again.")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -51,17 +74,18 @@ export function Footer() {
                     placeholder="Enter your email"
                     className="bg-indigo-900/30 border-indigo-800/50 text-white h-12 pl-4 pr-12 rounded-lg"
                     required
+                    disabled={isSubmitting}
                   />
                   <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-400" />
                 </div>
                 <Button
                   type="submit"
                   className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white h-12 px-6 rounded-lg"
+                  disabled={isSubmitting}
                 >
-                  Subscribe
+                  {isSubmitting ? "Subscribing..." : "Subscribe"}
                 </Button>
               </form>
-              {subscribed && <p className="text-green-400 mt-2 text-sm">Thank you for subscribing!</p>}
             </div>
           </div>
         </div>

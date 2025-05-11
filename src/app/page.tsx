@@ -272,14 +272,14 @@ export default function Home() {
                   Get Started
                 </Button>
               </Link>
-              <Link href="/jobs">
+              {/* <Link href="/jobs">
                 <Button
                   variant="outline"
                   className="border-white/30 text-white hover:bg-white/10 rounded-full px-8 py-6 text-lg backdrop-blur-sm transition-all duration-300 hover:border-white/50"
                 >
                   Browse Jobs
                 </Button>
-              </Link>
+              </Link> */}
             </motion.div>
           </motion.div>
 
@@ -379,10 +379,10 @@ export default function Home() {
               <h2 className="text-3xl font-bold text-white">Featured Opportunities</h2>
               <p className="text-indigo-200 mt-2">Discover your next career move</p>
             </div>
-            <Link href="/jobs" className="text-indigo-300 hover:text-indigo-100 flex items-center font-medium group">
+            {/* <Link href="/jobs" className="text-indigo-300 hover:text-indigo-100 flex items-center font-medium group">
               View all jobs{" "}
               <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
-            </Link>
+            </Link> */}
           </motion.div>
 
           {/* Swiper for auto-scrolling cards */}
@@ -902,8 +902,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <Footer />
     </main>
   )
 }
