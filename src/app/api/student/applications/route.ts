@@ -32,19 +32,42 @@ export async function GET(request: NextRequest) {
     // Get job details for each application
     const applicationsWithJobDetails = await Promise.all(
       applications.map(async (application) => {
-        const job = await db.collection("jobs").findOne({ _id: new ObjectId(application.jobId) })
+        try {
+          const job = await db.collection("jobs").findOne({ _id: new ObjectId(application.jobId) })
 
-        return {
-          ...application,
-          job: {
-            jobTitle: job?.jobTitle || "Unknown Job",
-            companyName: job?.companyName || "Unknown Company",
-            jobLocation: job?.jobLocation || "Unknown Location",
-            jobType: job?.jobType || "Unknown Type",
-          },
+          return {
+            ...application,
+            job: job
+              ? {
+                  jobTitle: job.jobTitle || "Unknown Job",
+                  companyName: job.companyName || "Unknown Company",
+                  jobLocation: job.jobLocation || "Unknown Location",
+                  jobType: job.jobType || "Unknown Type",
+                }
+              : {
+                  jobTitle: "Unknown Job",
+                  companyName: "Unknown Company",
+                  jobLocation: "Unknown Location",
+                  jobType: "Unknown Type",
+                },
+          }
+        } catch (error) {
+          console.error(`Error fetching job details for application ${application._id}:`, error)
+          return {
+            ...application,
+            job: {
+              jobTitle: "Unknown Job",
+              companyName: "Unknown Company",
+              jobLocation: "Unknown Location",
+              jobType: "Unknown Type",
+            },
+          }
         }
       }),
     )
+
+    // Log the applications data for debugging
+    console.log(`Found ${applicationsWithJobDetails.length} applications for student ${userId}`)
 
     // Add cache control headers to prevent caching
     const headers = new Headers()

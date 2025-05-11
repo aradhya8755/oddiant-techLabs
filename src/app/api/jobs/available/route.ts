@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { getUserFromRequest } from "@/lib/auth"
+import { ObjectId } from "mongodb"
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,28 +15,39 @@ export async function GET(request: NextRequest) {
     // Connect to database
     const { db } = await connectToDatabase()
 
-    // Get all active job postings
-    const jobs = await db
-      .collection("jobs")
-      .find({ status: { $in: ["open", "active"] } })
-      .sort({ createdAt: -1 })
-      .toArray()
+    // Find student to verify
+    const student = await db.collection("students").findOne({ _id: new ObjectId(userId) })
 
-    // Calculate days left for each job
-    const jobsWithDaysLeft = jobs.map((job) => {
-      // Calculate days left (30 days from creation by default)
-      const creationDate = job.createdAt ? new Date(job.createdAt) : new Date()
-      const expiryDate = job.expiryDate
-        ? new Date(job.expiryDate)
-        : new Date(creationDate.getTime() + 30 * 24 * 60 * 60 * 1000)
-      const today = new Date()
-      const daysLeft = Math.max(0, Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+    if (!student) {
+      return NextResponse.json({ success: false, message: "Student not found" }, { status: 404 })
+    }
 
-      return {
-        ...job,
-        daysLeft,
-      }
-    })
+    // Get all open jobs
+    const jobs = await db.collection("jobs").find({ status: "open" }).sort({ createdAt: -1 }).toArray()
+
+    // For each job, calculate days left and check if student has already applied
+    const jobsWithDetails = await Promise.all(
+      jobs.map(async (job) => {
+        // Calculate days left (30 days from creation by default)
+        const creationDate = job.createdAt ? new Date(job.createdAt) : new Date()
+        const expiryDate = new Date(creationDate)
+        expiryDate.setDate(expiryDate.getDate() + 30)
+        const today = new Date()
+        const daysLeft = Math.max(0, Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+
+        // Check if student has already applied
+        const application = await db.collection("job_applications").findOne({
+          candidateId: new ObjectId(userId),
+          jobId: job._id,
+        })
+
+        return {
+          ...job,
+          daysLeft,
+          hasApplied: !!application,
+        }
+      }),
+    )
 
     // Add cache control headers to prevent caching
     const headers = new Headers()
@@ -44,7 +56,7 @@ export async function GET(request: NextRequest) {
     headers.append("Expires", "0")
 
     return NextResponse.json(
-      { success: true, jobs: jobsWithDaysLeft },
+      { success: true, jobs: jobsWithDetails },
       {
         status: 200,
         headers: headers,
@@ -52,6 +64,6 @@ export async function GET(request: NextRequest) {
     )
   } catch (error) {
     console.error("Error fetching available jobs:", error)
-    return NextResponse.json({ success: false, message: "Failed to fetch jobs" }, { status: 500 })
+    return NextResponse.json({ success: false, message: "Failed to fetch available jobs" }, { status: 500 })
   }
 }

@@ -6,7 +6,6 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { toast, Toaster } from "sonner"
 import {
@@ -190,6 +189,11 @@ interface JobPosting {
   status: string
   createdAt: string
   daysLeft: number
+  description?: string
+  responsibilities?: string[]
+  requirements?: string[]
+  benefits?: string[]
+  hasApplied?: boolean
 }
 
 interface Application {
@@ -203,43 +207,6 @@ interface Application {
     jobLocation: string
     jobType: string
   }
-}
-
-interface Education {
-  degree: string
-  institution: string
-  startYear: string
-  endYear?: string
-  description?: string
-}
-
-interface Experience {
-  title?: string
-  companyName?: string
-  department?: string
-  location?: string
-  tenure?: string
-  professionalSummary?: string
-  summary?: string
-  currentlyWorking?: boolean
-  currentSalary?: string
-  expectedSalary?: string
-  noticePeriod?: string
-  totalExperience?: string
-  yearsOfExperience?: string
-}
-
-interface Certification {
-  name: string
-  issuingOrganization: string
-  issueDate?: string
-  expiryDate?: string
-  credentialId?: string
-  credentialUrl?: string
-}
-
-interface StudentDashboardProps {
-  student: StudentData
 }
 
 const formatDate = (dateString: string | undefined): string => {
@@ -434,6 +401,7 @@ export default function StudentDashboard() {
       }
 
       const data = await response.json()
+      console.log("Fetched jobs:", data.jobs)
       setJobs(data.jobs || [])
     } catch (error) {
       console.error("Error fetching jobs:", error)
@@ -485,12 +453,12 @@ export default function StudentDashboard() {
 
       if (!response.ok) {
         console.error("Failed to fetch applications:", response.status)
-        // Use empty array if API fails
         setApplications([])
         return
       }
 
       const data = await response.json()
+      console.log("Fetched applications:", data.applications)
       setApplications(data.applications || [])
     } catch (error) {
       console.error("Error fetching applications:", error)
@@ -506,6 +474,12 @@ export default function StudentDashboard() {
       fetchApplications()
     }
   }, [isLoading, student])
+
+  // This effect ensures the tab content is updated when the URL parameter changes
+  useEffect(() => {
+    // Force re-render when tab changes in URL
+    console.log("Active tab changed to:", activeTab)
+  }, [activeTab])
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -624,6 +598,45 @@ export default function StudentDashboard() {
       toast.error("Failed to update settings")
     } finally {
       setIsUpdatingSettings(false)
+    }
+  }
+
+  const handleApplyToJob = async (jobId: string) => {
+    try {
+      const response = await fetch("/api/student/applications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ jobId }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        toast.error(data.message || "Failed to apply for job")
+        return
+      }
+
+      const data = await response.json()
+      toast.success("Application submitted successfully")
+
+      // Update jobs list to mark this job as applied
+      setJobs((prevJobs) =>
+        prevJobs.map((job) =>
+          job._id === jobId
+            ? {
+                ...job,
+                hasApplied: true,
+              }
+            : job,
+        ),
+      )
+
+      // Refresh applications list
+      fetchApplications()
+    } catch (error) {
+      console.error("Error applying for job:", error)
+      toast.error("An error occurred while applying for the job")
     }
   }
 
@@ -851,28 +864,57 @@ export default function StudentDashboard() {
           </Button>
         </div>
 
-        <Tabs defaultValue={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full max-w-2xl mx-auto">
-            <TabsTrigger value="jobs" className="flex items-center justify-center">
-              <Briefcase className="h-4 w-4 mr-2" />
+        {/* Main Navigation Tabs */}
+        <div className="mb-8">
+          <div className="flex space-x-2 border-b">
+            <button
+              onClick={() => handleTabChange("jobs")}
+              className={`px-4 py-2 font-medium ${
+                activeTab === "jobs" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Briefcase className="h-4 w-4 inline mr-2" />
               Job Openings
-            </TabsTrigger>
-            <TabsTrigger value="applications" className="flex items-center justify-center">
-              <FileText className="h-4 w-4 mr-2" />
+            </button>
+            <button
+              onClick={() => handleTabChange("applications")}
+              className={`px-4 py-2 font-medium ${
+                activeTab === "applications"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <FileText className="h-4 w-4 inline mr-2" />
               My Applications
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center justify-center">
-              <User className="h-4 w-4 mr-2" />
+            </button>
+            <button
+              onClick={() => handleTabChange("profile")}
+              className={`px-4 py-2 font-medium ${
+                activeTab === "profile"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <User className="h-4 w-4 inline mr-2" />
               My Profile
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center justify-center">
-              <Settings className="h-4 w-4 mr-2" />
+            </button>
+            <button
+              onClick={() => handleTabChange("settings")}
+              className={`px-4 py-2 font-medium ${
+                activeTab === "settings"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Settings className="h-4 w-4 inline mr-2" />
               Settings
-            </TabsTrigger>
-          </TabsList>
+            </button>
+          </div>
+        </div>
 
-          {/* Job Openings Tab */}
-          <TabsContent value="jobs">
+        {/* Job Openings Tab */}
+        {activeTab === "jobs" && (
+          <div>
             <Card>
               <CardHeader>
                 <CardTitle>Latest Job Openings</CardTitle>
@@ -983,7 +1025,18 @@ export default function StudentDashboard() {
                               <p className="text-sm font-medium text-gray-900">
                                 {job.salaryRange || "Salary not disclosed"}
                               </p>
-                              <Button onClick={() => router.push(`/jobs/${job._id}`)}>View Details</Button>
+                              <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => router.push(`/jobs/${job._id}`)}>
+                                  View Details
+                                </Button>
+                                {job.hasApplied ? (
+                                  <Button variant="outline" disabled>
+                                    Applied
+                                  </Button>
+                                ) : (
+                                  <Button onClick={() => handleApplyToJob(job._id)}>Apply Now</Button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </CardContent>
@@ -993,10 +1046,12 @@ export default function StudentDashboard() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+        )}
 
-          {/* Applications Tab */}
-          <TabsContent value="applications">
+        {/* Applications Tab */}
+        {activeTab === "applications" && (
+          <div>
             <Card>
               <CardHeader>
                 <CardTitle>My Applications</CardTitle>
@@ -1021,11 +1076,13 @@ export default function StudentDashboard() {
                         <CardContent className="p-6">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h3 className="text-lg font-semibold mb-1">{application.job.jobTitle}</h3>
-                              <p className="text-gray-600 mb-2">{application.job.companyName}</p>
+                              <h3 className="text-lg font-semibold mb-1">
+                                {application.job?.jobTitle || "Unknown Job"}
+                              </h3>
+                              <p className="text-gray-600 mb-2">{application.job?.companyName || "Unknown Company"}</p>
                               <div className="flex items-center text-sm text-gray-500 mb-4">
                                 <MapPin className="h-4 w-4 mr-1" />
-                                {application.job.jobLocation}
+                                {application.job?.jobLocation || "Unknown Location"}
                               </div>
                             </div>
                             <div className="text-right">
@@ -1051,10 +1108,12 @@ export default function StudentDashboard() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+        )}
 
-          {/* Profile Tab */}
-          <TabsContent value="profile">
+        {/* Profile Tab */}
+        {activeTab === "profile" && (
+          <div>
             <Card>
               <CardHeader>
                 <CardTitle>My Profile</CardTitle>
@@ -1070,7 +1129,6 @@ export default function StudentDashboard() {
                             student.avatar ||
                             student.documents?.photograph?.url ||
                             "/placeholder.svg?height=128&width=128" ||
-                            "/placeholder.svg" ||
                             "/placeholder.svg"
                           }
                           alt={`${student.firstName} ${student.lastName}`}
@@ -1466,8 +1524,8 @@ export default function StudentDashboard() {
                                       <Badge className="bg-green-100 text-green-800">Current</Badge>
                                     )}
                                   </div>
-                                  <p className="text-gray-600">Company: {exp.companyName || "Not specified"}</p>{" "}
-                                  <p>Department: {exp.department && ` ${exp.department}`}</p>
+                                  <p className="text-gray-600">Company: {exp.companyName || "Not specified"}</p>
+                                  {exp.department && <p>Department: {exp.department}</p>}
                                   {exp.location && <p className="text-sm text-gray-700">{exp.location}</p>}
                                   <div className="flex justify-between mt-1">
                                     {exp.tenure && (
@@ -1688,10 +1746,12 @@ export default function StudentDashboard() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+        )}
 
-          {/* Settings Tab */}
-          <TabsContent value="settings">
+        {/* Settings Tab */}
+        {activeTab === "settings" && (
+          <div>
             <Card>
               <CardHeader>
                 <CardTitle>Account Settings</CardTitle>
@@ -1873,8 +1933,8 @@ export default function StudentDashboard() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </main>
     </div>
   )
