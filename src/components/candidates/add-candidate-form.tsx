@@ -190,7 +190,7 @@ export function AddCandidateForm({ jobs = [] }: { jobs?: JobOption[] }) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 bg-green-700 text-white"
                   disabled={isProcessingFile}
                 >
                   {isProcessingFile ? (

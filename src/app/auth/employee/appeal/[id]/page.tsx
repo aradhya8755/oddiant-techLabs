@@ -1248,7 +1248,7 @@ export default function AppealPage() {
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full md:w-auto bg-black text-white hover:bg-green-500 hover:text-black"
+          className="w-full md:w-auto bg-black text-white hover:bg-green-600 hover:text-black"
         >
           {isSubmitting ? "Submitting..." : "Submit Appeal"}
         </Button>

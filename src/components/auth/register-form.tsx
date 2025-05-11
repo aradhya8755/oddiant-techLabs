@@ -309,7 +309,7 @@ export default function RegisterForm() {
           </Button>
         ) : (
           <Button
-            className="hover:bg-green-500 hover:text-black"
+            className="hover:bg-green-600 hover:text-black"
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}

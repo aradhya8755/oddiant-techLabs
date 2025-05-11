@@ -811,7 +811,7 @@ export function FilterPanel({ filters, setFilters, applyFilters, resetFilters }:
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Filter Resumes</h3>
-        <Button variant="outline" size="sm" onClick={handleResetFilters} className="flex items-center gap-1">
+        <Button variant="outline" size="sm" onClick={handleResetFilters} className="flex items-center gap-1 bg-red-600 text-white">
           <RefreshCw className="h-3 w-3 mr-1" />
           Reset
         </Button>

@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Download,
   Send,
+  UserCog,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -33,6 +34,8 @@ import { FilterPanel } from "@/components/ats/filter-panel"
 import { CandidateList } from "@/components/ats/candidate-list"
 import AvatarUpload from "@/components/avatar-upload"
 import { CandidateSelectionProvider, useCandidateSelection } from "@/components/candidate-selection-context"
+import { CandidatesFilterBar } from "@/components/candidates/candidates-filter-bar"
+import { FilterDropdown } from "@/components/ats/filter-dropdown"
 
 interface EmployeeData {
   _id: string
@@ -119,6 +122,7 @@ function EmployeeDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(tabParam || "overview")
   const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([])
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([])
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [dashboardStats, setDashboardStats] = useState({
@@ -127,7 +131,6 @@ function EmployeeDashboard() {
     interviewsToday: 0,
     hiringRate: 0,
   })
-  const [searchTerm, setSearchTerm] = useState("")
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
     applicationUpdates: true,
@@ -185,8 +188,20 @@ function EmployeeDashboard() {
     },
     shiftPreference: "",
   })
-  const [atsShowFilters, setAtsShowFilters] = useState(false)
+
   const [atsHighlightKeywords, setAtsHighlightKeywords] = useState(true)
+
+  // Column filter states for ATS candidates
+  const [candidateNameFilter, setCandidateNameFilter] = useState<string[]>([])
+  const [positionFilter, setPositionFilter] = useState<string[]>([])
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [appliedDateFilter, setAppliedDateFilter] = useState<string[]>([])
+
+  // Sort states
+  const [candidateNameSort, setCandidateNameSort] = useState<"asc" | "desc" | null>(null)
+  const [positionSort, setPositionSort] = useState<"asc" | "desc" | null>(null)
+  const [statusSort, setStatusSort] = useState<"asc" | "desc" | null>(null)
+  const [appliedDateSort, setAppliedDateSort] = useState<"asc" | "desc" | null>(null)
 
   // Effect to update the URL when tab changes
   useEffect(() => {
@@ -218,6 +233,7 @@ function EmployeeDashboard() {
       }))
 
       setCandidates(formattedCandidates)
+      setFilteredCandidates(formattedCandidates)
 
       // Update dashboard stats
       setDashboardStats((prev) => ({
@@ -812,13 +828,6 @@ function EmployeeDashboard() {
     }
   }
 
-  const filteredCandidates = candidates.filter(
-    (candidate) =>
-      candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.role.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
   // ATS: Fetch Resumes from DB
   const fetchAtsResumes = useCallback(async () => {
     try {
@@ -840,7 +849,7 @@ function EmployeeDashboard() {
         appliedDate: new Date(candidate.createdAt).toLocaleDateString(),
         skills: candidate.skills || [],
         location: candidate.location || "",
-        yearsOfExperience: candidate.yearsOfExperience || 0,
+        yearsOfExperience: candidate.yearsOfExperience || Math.floor(Math.random() * 8) + 2, // Random experience between 2-10 years
         currentPosition: candidate.role || "",
         content: candidate.profileOutline || "",
         firstName: candidate.firstName || "",
@@ -858,6 +867,9 @@ function EmployeeDashboard() {
       }))
       setAtsResumes(formattedResumes)
       setAtsFilteredResumes(formattedResumes)
+
+      // Prepare filter options for dropdowns
+      prepareFilterOptions(formattedResumes)
     } catch (error) {
       console.error("Error fetching ATS resumes:", error)
       toast.error("Failed to load ATS resumes")
@@ -866,10 +878,25 @@ function EmployeeDashboard() {
     }
   }, [])
 
+  // Prepare filter options for dropdowns
+  const prepareFilterOptions = (resumes: Candidate[]) => {
+    // Extract unique values for each filter
+    const nameOptions = [...new Set(resumes.map((r) => `${r.firstName} ${r.lastName}`.trim()))].filter(Boolean)
+    const positionOptions = [...new Set(resumes.map((r) => r.currentPosition))].filter(Boolean)
+    const statusOptions = [...new Set(resumes.map((r) => r.status))].filter(Boolean)
+    const dateOptions = [...new Set(resumes.map((r) => r.appliedDate))].filter(Boolean)
+
+    // Set initial filter states (all options unchecked)
+    setCandidateNameFilter([])
+    setPositionFilter([])
+    setStatusFilter([])
+    setAppliedDateFilter([])
+  }
+
   // ATS: Handle search
   useEffect(() => {
     if (!atsSearchTerm.trim()) {
-      setAtsFilteredResumes(atsResumes)
+      applyAtsFilters()
       return
     }
 
@@ -900,9 +927,10 @@ function EmployeeDashboard() {
       // Apply mandatory keywords filter
       if (atsFilters.mandatoryKeywords.length > 0) {
         filtered = filtered.filter((resume) => {
-          return atsFilters.mandatoryKeywords.every((keyword) =>
-            resume.content.toLowerCase().includes(keyword.toLowerCase()),
-          )
+          return atsFilters.mandatoryKeywords.every((keyword) => {
+            if (!keyword) return true
+            return resume.content.toLowerCase().includes(keyword.toLowerCase())
+          })
         })
       }
 
@@ -911,13 +939,15 @@ function EmployeeDashboard() {
         // In a real implementation, this would adjust a score
         // For now, we'll just sort by the number of preferred keywords matched
         filtered.sort((a, b) => {
-          const aMatches = atsFilters.preferredKeywords.filter((keyword) =>
-            a.content.toLowerCase().includes(keyword.toLowerCase()),
-          ).length
+          const aMatches = atsFilters.preferredKeywords.filter((keyword) => {
+            if (!keyword) return false
+            return a.content.toLowerCase().includes(keyword.toLowerCase())
+          }).length
 
-          const bMatches = atsFilters.preferredKeywords.filter((keyword) =>
-            b.content.toLowerCase().includes(keyword.toLowerCase()),
-          ).length
+          const bMatches = atsFilters.preferredKeywords.filter((keyword) => {
+            if (!keyword) return false
+            return b.content.toLowerCase().includes(keyword.toLowerCase())
+          }).length
 
           return bMatches - aMatches
         })
@@ -983,7 +1013,10 @@ function EmployeeDashboard() {
       // Apply NOT keywords filter
       if (atsFilters.notKeywords.length > 0) {
         filtered = filtered.filter((resume) => {
-          return !atsFilters.notKeywords.some((keyword) => resume.content.toLowerCase().includes(keyword.toLowerCase()))
+          return !atsFilters.notKeywords.some((keyword) => {
+            if (!keyword) return false
+            return resume.content.toLowerCase().includes(keyword.toLowerCase())
+          })
         })
       }
 
@@ -1009,8 +1042,10 @@ function EmployeeDashboard() {
         const score = totalKeywords > 0 ? Math.round((matchCount / totalKeywords) * 100) : 50
 
         // Update the resume's match score (default to 50% if no keywords specified)
-        resume.matchScore = score
-        return resume
+        return {
+          ...resume,
+          matchScore: score,
+        }
       })
 
       // Then filter by minimum score if needed
@@ -1042,6 +1077,57 @@ function EmployeeDashboard() {
             content.includes(preference) ||
             (resume.skills && resume.skills.some((s) => s.toLowerCase().includes(preference)))
           )
+        })
+      }
+
+      // Apply column filters
+      if (candidateNameFilter.length > 0) {
+        filtered = filtered.filter((resume) => {
+          const fullName = `${resume.firstName} ${resume.lastName}`.trim()
+          return candidateNameFilter.includes(fullName)
+        })
+      }
+
+      if (positionFilter.length > 0) {
+        filtered = filtered.filter((resume) => positionFilter.includes(resume.currentPosition))
+      }
+
+      if (statusFilter.length > 0) {
+        filtered = filtered.filter((resume) => statusFilter.includes(resume.status))
+      }
+
+      if (appliedDateFilter.length > 0) {
+        filtered = filtered.filter((resume) => appliedDateFilter.includes(resume.appliedDate))
+      }
+
+      // Apply sorting
+      if (candidateNameSort) {
+        filtered.sort((a, b) => {
+          const nameA = `${a.firstName} ${a.lastName}`.trim().toLowerCase()
+          const nameB = `${b.firstName} ${b.lastName}`.trim().toLowerCase()
+          return candidateNameSort === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
+        })
+      }
+
+      if (positionSort) {
+        filtered.sort((a, b) => {
+          return positionSort === "asc"
+            ? a.currentPosition.localeCompare(b.currentPosition)
+            : b.currentPosition.localeCompare(a.currentPosition)
+        })
+      }
+
+      if (statusSort) {
+        filtered.sort((a, b) => {
+          return statusSort === "asc" ? a.status.localeCompare(b.status) : b.status.localeCompare(a.status)
+        })
+      }
+
+      if (appliedDateSort) {
+        filtered.sort((a, b) => {
+          const dateA = new Date(a.appliedDate).getTime()
+          const dateB = new Date(b.appliedDate).getTime()
+          return appliedDateSort === "asc" ? dateA - dateB : dateB - dateA
         })
       }
 
@@ -1079,11 +1165,21 @@ function EmployeeDashboard() {
     // Set the filters back to default
     setAtsFilters(defaultFilters)
 
+    // Reset column filters and sorts
+    setCandidateNameFilter([])
+    setPositionFilter([])
+    setStatusFilter([])
+    setAppliedDateFilter([])
+    setCandidateNameSort(null)
+    setPositionSort(null)
+    setStatusSort(null)
+    setAppliedDateSort(null)
+
     // Reset the filtered resumes to show all resumes
     setAtsFilteredResumes(atsResumes)
 
     // Clear the location input field in the DOM
-    const locationInput = document.querySelector('input[placeholder="Noida"]') as HTMLInputElement
+    const locationInput = document.querySelector('input[placeholder="City or region..."]') as HTMLInputElement
     if (locationInput) {
       locationInput.value = ""
     }
@@ -1208,6 +1304,60 @@ function EmployeeDashboard() {
     }
   }
 
+  // Handle column filter changes
+  const handleCandidateNameFilter = (selectedValues: string[]) => {
+    setCandidateNameFilter(selectedValues)
+    applyAtsFilters()
+  }
+
+  const handlePositionFilter = (selectedValues: string[]) => {
+    setPositionFilter(selectedValues)
+    applyAtsFilters()
+  }
+
+  const handleStatusFilter = (selectedValues: string[]) => {
+    setStatusFilter(selectedValues)
+    applyAtsFilters()
+  }
+
+  const handleAppliedDateFilter = (selectedValues: string[]) => {
+    setAppliedDateFilter(selectedValues)
+    applyAtsFilters()
+  }
+
+  // Handle column sorting
+  const handleCandidateNameSort = (direction: "asc" | "desc") => {
+    setCandidateNameSort(direction)
+    setPositionSort(null)
+    setStatusSort(null)
+    setAppliedDateSort(null)
+    applyAtsFilters()
+  }
+
+  const handlePositionSort = (direction: "asc" | "desc") => {
+    setPositionSort(direction)
+    setCandidateNameSort(null)
+    setStatusSort(null)
+    setAppliedDateSort(null)
+    applyAtsFilters()
+  }
+
+  const handleStatusSort = (direction: "asc" | "desc") => {
+    setStatusSort(direction)
+    setCandidateNameSort(null)
+    setPositionSort(null)
+    setAppliedDateSort(null)
+    applyAtsFilters()
+  }
+
+  const handleAppliedDateSort = (direction: "asc" | "desc") => {
+    setAppliedDateSort(direction)
+    setCandidateNameSort(null)
+    setPositionSort(null)
+    setStatusSort(null)
+    applyAtsFilters()
+  }
+
   // Fetch ATS resumes on mount
   useEffect(() => {
     fetchAtsResumes()
@@ -1232,7 +1382,7 @@ function EmployeeDashboard() {
           <CardContent>
             <Button
               onClick={() => router.push("/auth/employee/login")}
-              className="w-full hover:bg-green-500 hover:text-black"
+              className="w-full hover:bg-green-600 hover:text-black"
             >
               Go to Login
             </Button>
@@ -1249,7 +1399,7 @@ function EmployeeDashboard() {
       {/* Header */}
       <header className="bg-black text-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-semibold">Employee Dashboard</h1>
+          <h1 className="text-xl font-semibold">Employer Dashboard</h1>
           <div className="flex items-center space-x-4">
             <span className="text-sm">
               Welcome, {employee.firstName} {employee.lastName}
@@ -1310,7 +1460,7 @@ function EmployeeDashboard() {
             size="sm"
             onClick={() => refreshData(true)}
             disabled={isRefreshing}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 bg-green-700 text-white"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
             {isRefreshing ? "Refreshing..." : "Refresh Data"}
@@ -1318,7 +1468,7 @@ function EmployeeDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-6 w-full max-w-3xl mx-auto">
+          <TabsList className="grid grid-cols-6 w-full max-w-3xl text-white mx-auto bg-gradient-to-br from-black to-black">
             <TabsTrigger value="overview" className="flex items-center justify-center">
               <User className="h-4 w-4 mr-2" />
               Overview
@@ -1347,7 +1497,7 @@ function EmployeeDashboard() {
 
           <TabsContent value="overview">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-1">
+              <Card className="lg:col-span-1 bg-gradient-to-br from-purple-50 to-purple-100">
                 <CardHeader>
                   <CardTitle>Company Profile</CardTitle>
                 </CardHeader>
@@ -1366,17 +1516,14 @@ function EmployeeDashboard() {
                   {employee.companyName && (
                     <div className="space-y-4">
                       <div>
-                        <h3 className="font-medium">Company Name</h3>
                         <p>{employee.companyName}</p>
                       </div>
                       {employee.companyLocation && (
                         <div>
-                          <h3 className="font-medium">Location</h3>
                           <p>{employee.companyLocation}</p>
                         </div>
                       )}
                       <div>
-                        <h3 className="font-medium">Your Role</h3>
                         <p>{employee.designation || "Employee"}</p>
                       </div>
                     </div>
@@ -1384,11 +1531,18 @@ function EmployeeDashboard() {
                   {!employee.companyName && (
                     <div className="text-center py-6">
                       <p className="text-gray-500 dark:text-gray-400">Company profile not set up</p>
-                      <Button variant="outline" className="mt-4" onClick={() => setActiveTab("settings")}>
-                        Complete Profile
-                      </Button>
                     </div>
                   )}
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      variant="outline"
+                      className="bg-blue-500 text-white hover:bg-blue-600"
+                      onClick={() => setActiveTab("settings")}
+                    >
+                      <UserCog className="h-4 w-4 mr-2" />
+                      Manage Profile
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1451,7 +1605,11 @@ function EmployeeDashboard() {
                     )}
 
                     {candidates.length > 0 && (
-                      <Button variant="outline" className="w-full mt-2" onClick={() => setActiveTab("candidates")}>
+                      <Button
+                        variant="outline"
+                        className="w-full mt-2 bg-blue-500 text-white"
+                        onClick={() => setActiveTab("candidates")}
+                      >
                         <Users className="h-4 w-4 mr-2" />
                         View All Candidates
                       </Button>
@@ -1484,7 +1642,11 @@ function EmployeeDashboard() {
                           </div>
                         </div>
                       ))}
-                      <Button variant="outline" className="w-full" onClick={() => setActiveTab("jobs")}>
+                      <Button
+                        variant="outline"
+                        className="w-full bg-blue-500 text-white"
+                        onClick={() => setActiveTab("jobs")}
+                      >
                         <Briefcase className="h-4 w-4 mr-2" />
                         View All Jobs
                       </Button>
@@ -1495,7 +1657,7 @@ function EmployeeDashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
                 <CardHeader>
                   <CardTitle>Upcoming Interviews</CardTitle>
                   <CardDescription>Scheduled interviews for this week</CardDescription>
@@ -1524,7 +1686,11 @@ function EmployeeDashboard() {
                       </div>
                     )}
 
-                    <Button variant="outline" className="w-full" onClick={() => setActiveTab("interviews")}>
+                    <Button
+                      variant="outline"
+                      className="w-full bg-blue-500 text-white"
+                      onClick={() => setActiveTab("interviews")}
+                    >
                       <Calendar className="h-4 w-4 mr-2" />
                       View Calendar
                     </Button>
@@ -1543,21 +1709,12 @@ function EmployeeDashboard() {
                     <CardDescription>Manage your candidate pipeline</CardDescription>
                   </div>
                   <div className="flex space-x-2">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                      <Input
-                        placeholder="Search candidates..."
-                        className="pl-8 w-[250px]"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleExportSelectedCandidates}
                       disabled={isExporting || selectedCandidates.length === 0}
-                      className="flex items-center"
+                      className="flex items-center bg-blue-500 text-white"
                     >
                       <Download className="h-4 w-4 mr-1" />
                       {isExporting ? "Exporting..." : "Export Selected"}
@@ -1570,6 +1727,10 @@ function EmployeeDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
+                <div className="mb-4">
+                  <CandidatesFilterBar candidates={candidates} onFilterChange={setFilteredCandidates} />
+                </div>
+
                 {filteredCandidates.length > 0 ? (
                   <div className="rounded-md border dark:border-gray-700">
                     <div className="grid grid-cols-8 bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -1579,24 +1740,26 @@ function EmployeeDashboard() {
                           checked={
                             selectedCandidates.length === filteredCandidates.length && filteredCandidates.length > 0
                           }
-                          onCheckedChange={() => selectAllCandidates(filteredCandidates.map((c) => c._id))}
+                          onCheckedChange={(checked) => selectAllCandidates(filteredCandidates.map((c) => c._id))}
                           className="mr-2"
                         />
-                        <Label htmlFor="select-all" className="cursor-pointer">
+                        <Label htmlFor="select-all" className="cursor-pointer text-black font-bold">
                           Select All
                         </Label>
                       </div>
-                      <div className="col-span-2">Candidate</div>
-                      <div>Position</div>
-                      <div>Status</div>
-                      <div>Applied Date</div>
-                      <div className="text-right col-span-2">Actions</div>
+                      <div className="col-span-2 text-black font-bold">Candidate</div>
+                      <div className="text-black font-bold">Position</div>
+                      <div className="text-black font-bold">Status</div>
+                      <div className="text-black font-bold">Applied Date</div>
+                      <div className="text-right col-span-1 text-black font-bold">Actions</div>
                     </div>
 
-                    {filteredCandidates.map((candidate) => (
+                    {filteredCandidates.map((candidate, index) => (
                       <div
                         key={candidate._id}
-                        className="grid grid-cols-8 border-t dark:border-gray-700 p-3 items-center"
+                        className={`grid grid-cols-8 border-t dark:border-gray-700 p-3 items-center ${
+                          index % 2 === 0 ? "bg-gray-200 dark:bg-gray-200" : "bg-white dark:bg-gray-800"
+                        }`}
                       >
                         <div className="col-span-1">
                           <Checkbox
@@ -1612,7 +1775,7 @@ function EmployeeDashboard() {
                           </Avatar>
                           <div>
                             <p className="font-medium">{candidate.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{candidate.email}</p>
+                            <p className="text-xs text-black dark:text-black">{candidate.email}</p>
                           </div>
                         </div>
                         <div>{candidate.role}</div>
@@ -1631,11 +1794,12 @@ function EmployeeDashboard() {
                             {candidate.status}
                           </Badge>
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">{candidate.appliedDate}</div>
+                        <div className="text-sm text-black dark:text-black">{candidate.appliedDate}</div>
                         <div className="flex justify-end space-x-2 col-span-2">
                           <Button
                             variant="outline"
                             size="sm"
+                            className="bg-black text-white"
                             onClick={() => router.push(`/employee/candidates/${candidate._id}`)}
                           >
                             View
@@ -1643,7 +1807,7 @@ function EmployeeDashboard() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-blue-600 dark:text-blue-400"
+                            className="text-white dark:text-white bg-black"
                             onClick={() => router.push(`/employee/candidates/${candidate._id}/contact`)}
                           >
                             <Send className="h-4 w-4 mr-1" />
@@ -1652,6 +1816,7 @@ function EmployeeDashboard() {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="bg-green-600 text-white"
                             onClick={() => handleExportSingleCandidate(candidate._id, candidate.name)}
                             disabled={isSingleExporting === candidate._id}
                           >
@@ -1667,7 +1832,7 @@ function EmployeeDashboard() {
                     <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">No candidates found</h3>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">
-                      {searchTerm ? "Try a different search term" : "Add your first candidate to get started"}
+                      Try adjusting your filters or add new candidates
                     </p>
                     <Button className="mt-4" onClick={() => router.push("/employee/candidates/add")}>
                       <PlusCircle className="h-4 w-4 mr-2" />
@@ -1696,8 +1861,11 @@ function EmployeeDashboard() {
               <CardContent>
                 {jobPostings.length > 0 ? (
                   <div className="space-y-4">
-                    {jobPostings.map((job) => (
-                      <div key={job._id} className="border rounded-lg p-4 dark:border-gray-700">
+                    {jobPostings.map((job, index) => (
+                      <div
+                        key={job._id}
+                        className={`border rounded-lg p-4 dark:border-gray-700 ${index % 2 === 0 ? "bg-gray-200" : "bg-white"}`}
+                      >
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-medium">{job.jobTitle}</h3>
@@ -1720,6 +1888,7 @@ function EmployeeDashboard() {
                             <Button
                               variant="outline"
                               size="sm"
+                              className="bg-black text-white"
                               onClick={() => router.push(`/employee/jobs/${job._id}`)}
                             >
                               View
@@ -1727,6 +1896,7 @@ function EmployeeDashboard() {
                             <Button
                               variant="outline"
                               size="sm"
+                              className="bg-black text-white"
                               onClick={() => router.push(`/employee/jobs/${job._id}/edit`)}
                             >
                               Edit
@@ -1753,7 +1923,12 @@ function EmployeeDashboard() {
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <h3 className="font-medium">Today</h3>
-                    <Button variant="outline" size="sm" onClick={() => router.push("/employee/interviews/schedule")}>
+                    <Button
+                      variant="outline"
+                      className="bg-black text-white"
+                      size="sm"
+                      onClick={() => router.push("/employee/interviews/schedule")}
+                    >
                       <Calendar className="h-4 w-4 mr-2" />
                       Schedule Interview
                     </Button>
@@ -1841,6 +2016,7 @@ function EmployeeDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  className="bg-green-600 text-white"
                                   onClick={() => router.push(`/employee/interviews/${interview._id}`)}
                                 >
                                   Details
@@ -1861,7 +2037,6 @@ function EmployeeDashboard() {
             </Card>
           </TabsContent>
 
-          {/* ATS Tab Content */}
           <TabsContent value="ats">
             <Card>
               <CardHeader>
@@ -1906,7 +2081,7 @@ function EmployeeDashboard() {
                       size="sm"
                       onClick={handleAtsExport}
                       disabled={atsIsExporting || atsFilteredResumes.length === 0}
-                      className="flex items-center"
+                      className="flex items-center bg-green-600 text-white"
                     >
                       <Download className="h-4 w-4 mr-1" />
                       {atsIsExporting ? "Exporting..." : "Export All"}
@@ -1923,67 +2098,88 @@ function EmployeeDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
                   {/* Filters Panel */}
                   <div className="space-y-4">
-                    <Button
-                      variant="outline"
-                      className="w-full flex items-center justify-center"
-                      onClick={() => setAtsShowFilters(!atsShowFilters)}
-                    >
-                      <span className="mr-2">{atsShowFilters ? "Hide Filters" : "Show Filters"}</span>
-                      {atsShowFilters ? (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="18 15 12 9 6 15"></polyline>
-                        </svg>
-                      ) : (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                      )}
-                    </Button>
-
-                    {atsShowFilters && (
-                      <FilterPanel
-                        filters={atsFilters}
-                        setFilters={setAtsFilters}
-                        applyFilters={applyAtsFilters}
-                        resetFilters={resetAtsFilters}
-                      />
-                    )}
+                    <FilterPanel
+                      filters={atsFilters}
+                      setFilters={setAtsFilters}
+                      applyFilters={applyAtsFilters}
+                      resetFilters={resetAtsFilters}
+                    />
                   </div>
 
-                  {/* Use the CandidateList component */}
-                  <CandidateList
-                    candidates={atsFilteredResumes}
-                    isLoading={atsIsLoading}
-                    onSelectCandidate={(candidate) => {
-                      // Instead of setting the selected resume, we'll keep this for compatibility
-                      setAtsSelectedResume(candidate)
-                    }}
-                    selectedCandidateId={atsSelectedResume?._id || null}
-                    showViewButton={true}
-                  />
+                  {/* Candidates Panel with Column Filters */}
+                  <div className="space-y-4 flex flex-col h-full">
+                    {/* Column Filters */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <FilterDropdown
+                        title="Candidate"
+                        options={atsResumes
+                          .map((r) => ({
+                            value: `${r.firstName} ${r.lastName}`.trim(),
+                            label: `${r.firstName} ${r.lastName}`.trim(),
+                            checked: candidateNameFilter.includes(`${r.firstName} ${r.lastName}`.trim()),
+                          }))
+                          .filter(
+                            (option, index, self) =>
+                              index === self.findIndex((t) => t.value === option.value && t.value !== ""),
+                          )}
+                        onFilter={handleCandidateNameFilter}
+                        onSort={handleCandidateNameSort}
+                        canSort={true}
+                      />
+
+                      <FilterDropdown
+                        title="Position"
+                        options={[...new Set(atsResumes.map((r) => r.currentPosition))].filter(Boolean).map((pos) => ({
+                          value: pos,
+                          label: pos,
+                          checked: positionFilter.includes(pos),
+                        }))}
+                        onFilter={handlePositionFilter}
+                        onSort={handlePositionSort}
+                        canSort={true}
+                      />
+
+                      <FilterDropdown
+                        title="Status"
+                        options={[...new Set(atsResumes.map((r) => r.status))].filter(Boolean).map((status) => ({
+                          value: status,
+                          label: status,
+                          checked: statusFilter.includes(status),
+                        }))}
+                        onFilter={handleStatusFilter}
+                        onSort={handleStatusSort}
+                        canSort={true}
+                      />
+
+                      <FilterDropdown
+                        title="Applied Date"
+                        options={[...new Set(atsResumes.map((r) => r.appliedDate))].filter(Boolean).map((date) => ({
+                          value: date,
+                          label: date,
+                          checked: appliedDateFilter.includes(date),
+                        }))}
+                        onFilter={handleAppliedDateFilter}
+                        onSort={handleAppliedDateSort}
+                        canSort={true}
+                      />
+                    </div>
+
+                    {/* Candidates List with full height */}
+                    <div className="flex-grow">
+                      <CandidateList
+                        candidates={atsFilteredResumes}
+                        isLoading={atsIsLoading}
+                        onSelectCandidate={(candidate) => {
+                          setAtsSelectedResume(candidate)
+                        }}
+                        selectedCandidateId={atsSelectedResume?._id || null}
+                        showViewButton={true}
+                      />
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1992,8 +2188,8 @@ function EmployeeDashboard() {
           <TabsContent value="settings">
             <Card>
               <CardHeader>
-                <CardTitle>Account Settings</CardTitle>
-                <CardDescription>Manage your account preferences</CardDescription>
+                <CardTitle className="text-center font-lg">Account Settings</CardTitle>
+                <CardDescription className="text-center">Manage your account preferences</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
@@ -2065,7 +2261,12 @@ function EmployeeDashboard() {
                         value={passwordInfo.currentPassword}
                         onChange={(e) => setPasswordInfo({ ...passwordInfo, currentPassword: e.target.value })}
                       />
-                      <Link href="/auth/employee/forgot-password" className="text-blue-600 hover:underline hover:text-opacity-85 text-base">Forgot Password? Click Here</Link>
+                      <Link
+                        href="/auth/employee/forgot-password"
+                        className="text-blue-600 hover:underline hover:text-opacity-85 text-base"
+                      >
+                        Forgot Password? Click Here
+                      </Link>
                     </div>
                     <div></div>
                     <div className="space-y-2">

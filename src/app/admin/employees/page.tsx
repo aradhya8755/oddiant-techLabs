@@ -132,7 +132,7 @@ export default function AdminEmployeesPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="ghost" disabled={isRefreshing} onClick={handleRefresh} className="flex-shrink-0 text-black bg-white hover:bg-green-500 hover:text-black">
+          <Button variant="ghost" disabled={isRefreshing} onClick={handleRefresh} className="flex-shrink-0 text-black bg-white hover:bg-green-600 hover:text-black">
             <RotateCw className={`h-4 w-4 mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
             {isRefreshing ? "Refreshing..." : "Refresh"}
           </Button>

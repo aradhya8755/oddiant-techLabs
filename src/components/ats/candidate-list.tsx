@@ -119,7 +119,7 @@ export function CandidateList({
   }
 
   return (
-    <Card className="border rounded-md overflow-hidden">
+    <Card className="border rounded-md h-full flex flex-col">
       <div className="bg-gray-50 dark:bg-gray-800 p-3 border-b flex justify-between items-center">
         <div className="flex items-center space-x-2">
           <Checkbox
@@ -136,14 +136,14 @@ export function CandidateList({
           size="sm"
           onClick={handleExportSelected}
           disabled={isExporting || selectedCandidates.length === 0}
-          className="flex items-center gap-1"
+          className="flex items-center gap-1 bg-blue-500 text-white"
         >
           <Download className="h-4 w-4 mr-1" />
           {isExporting ? "Exporting..." : "Export Selected"}
         </Button>
       </div>
 
-      <div className="divide-y max-h-[600px] overflow-y-auto">
+      <div className="divide-y overflow-y-auto flex-grow">
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
@@ -182,24 +182,15 @@ export function CandidateList({
                         <span>{candidate.location}</span>
                         <span className="mx-2">•</span>
                         <Briefcase className="h-3 w-3 mr-1" />
-                        <span>{candidate.yearsOfExperience} years</span>
+                        <span>{candidate.yearsOfExperience || 2} years</span>
                       </div>
                     </div>
-
-                    <Badge
-                      variant={
-                        candidate.matchScore > 70 ? "success" : candidate.matchScore > 40 ? "secondary" : "outline"
-                      }
-                      className="text-xs font-medium"
-                    >
-                      {candidate.matchScore || 50}%
-                    </Badge>
                   </div>
 
                   <div className="mt-2 flex flex-wrap gap-1">
                     {Array.isArray(candidate.skills) &&
                       candidate.skills.slice(0, 3).map((skill: string, index: number) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
+                        <Badge key={`${candidate._id}-skill-${index}`} variant="secondary" className="text-xs">
                           {skill}
                         </Badge>
                       ))}
@@ -220,7 +211,7 @@ export function CandidateList({
                         handleViewCandidate(candidate._id)
                       }}
                       disabled={viewingCandidate === candidate._id}
-                      className="flex items-center"
+                      className="flex items-center bg-black text-white"
                     >
                       {viewingCandidate === candidate._id ? (
                         <div className="animate-spin h-4 w-4 border-2 border-t-transparent border-current rounded-full"></div>

@@ -1480,7 +1480,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({
         </Button>
         <Button
           onClick={handleSubmit}
-          className="bg-black hover:bg-green-500 hover:text-black text-white"
+          className="bg-black hover:bg-green-600 hover:text-black text-white"
           disabled={isLoading || isSubmitting || hasInappropriateContent}
         >
           {isLoading || isSubmitting ? (

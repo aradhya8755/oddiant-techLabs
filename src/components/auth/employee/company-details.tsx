@@ -17,21 +17,78 @@ interface CompanyDetailsFormProps {
 }
 
 const industries = [
-  "Information Technology",
-  "Healthcare",
-  "Finance",
+  "Advertising/PR/Events",
+  "Agriculture/Dairy/Forestry/Fishing",
+  "Airlines/Aviation/Aerospace",
+  "Architecture & Interior Design",
+  "Automotive /Automobile",
+  "Banking /Financial Services /NBFC /Fintech",
+  "Beverages/Liquor",
+  "Chemical /Fertilisers",
+  "Computer Graphics",
+  "Construction Materials",
+  "Consulting Firms",
+  "Cosmetic /Beauty Products",
+  "Digital Marketing /Social Media",
   "Education",
-  "Manufacturing",
-  "Retail",
-  "Hospitality",
-  "Real Estate",
-  "Construction",
-  "Transportation",
-  "Media & Entertainment",
-  "Telecommunications",
-  "Energy",
-  "Agriculture",
+  "Educational Institute /Higher Education /School",
+  "E-Learning /Edutech",
+  "Electrical Appliances & Manufacturing",
+  "Electronics Manufacturing",
+  "Engineering & Design",
+  "Entertainment/Media/Publishing",
+  "Farming",
+  "Fashion/Apparels",
+  "Feed Manufacturing",
+  "FMCG",
+  "FnB /QSR /Restaurants",
+  "Food & Fruits Production/Edibles",
+  "Fresher",
+  "Gems & Jewellery",
+  "Government/PSU/Defence",
+  "Hardware /Steel /Iron",
+  "Hardware Machinery  & Equipments",
+  "Heat Ventilation Air Conditioning (HVAC)",
+  "Hospitality /Hotels",
+  "Hospitals/Healthcare/Diagnostics",
+  "Infrastructure /Construction & Engineering",
+  "Insurance",
+  "Internet/E-commerce",
+  "IT/Computers - Hardware & Networking",
+  "IT/Computers - Software",
+  "ITES/BPO",
+  "Jewellary /Gold/Diamonds",
+  "KPO/Research/Analytics",
+  "Law Enforcement/Security Services",
+  "Leather",
+  "Legal/Law Firm",
+  "Logistics /Transportation & Courier",
+  "Market Research",
+  "Medical Equipment Manufacturing",
+  "Mining",
+  "NGO/Social Services",
   "Other",
+  "Overseas /Immigration",
+  "Paints & Febrication",
+  "Petrolium & Natural Gas, Resources",
+  "Pharma & Life Sciences",
+  "Plastic,Rubber & Tyres",
+  "Power/Energy",
+  "Printing & Publications",
+  "Real Estate",
+  "Recruitment/Staffing/RPO",
+  "Retail Outlets",
+  "Semiconductor",
+  "Shipping/Marine Services",
+  "Stationary /Office Equipments",
+  "Stoks & Brokrage /Investment Firm",
+  "Telecom /ISP",
+  "Textiles/Yarn/Fabrics/Garments",
+  "Trading/Import/Export",
+  "Travel/Tourism",
+  "Waste Management & Treatment",
+  "Wellness/Fitness/Sports",
+  "Wood & Timber",
 ]
 
 const teamSizes = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5000+"]
@@ -561,6 +618,13 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
   const [showLocationDropdown, setShowLocationDropdown] = useState(false)
   const [filteredLocations, setFilteredLocations] = useState<string[]>([])
   const locationDropdownRef = useRef<HTMLDivElement>(null)
+  const locationInputRef = useRef<HTMLInputElement>(null)
+
+  const [industrySearchTerm, setIndustrySearchTerm] = useState("")
+  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false)
+  const [filteredIndustries, setFilteredIndustries] = useState<string[]>([])
+  const industryDropdownRef = useRef<HTMLDivElement>(null)
+  const industryInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     // Filter locations based on search term
@@ -577,10 +641,38 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
   }, [locationSearchTerm])
 
   useEffect(() => {
-    // Close dropdown when clicking outside
+    // Filter industries based on search term
+    if (industrySearchTerm) {
+      const filtered = industries
+        .filter((industry) => industry.toLowerCase().includes(industrySearchTerm.toLowerCase()))
+        .slice(0, 10) // Limit to 10 results for better performance
+      setFilteredIndustries(filtered)
+      setShowIndustryDropdown(filtered.length > 0)
+    } else {
+      setFilteredIndustries([])
+      setShowIndustryDropdown(false)
+    }
+  }, [industrySearchTerm])
+
+  useEffect(() => {
+    // Close location dropdown when clicking outside
     function handleClickOutside(event: MouseEvent) {
       if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target as Node)) {
         setShowLocationDropdown(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  useEffect(() => {
+    // Close industry dropdown when clicking outside
+    function handleClickOutside(event: MouseEvent) {
+      if (industryDropdownRef.current && !industryDropdownRef.current.contains(event.target as Node)) {
+        setShowIndustryDropdown(false)
       }
     }
 
@@ -627,11 +719,32 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
 
   const handleLocationSelect = (location: string) => {
     updateFormData({ companyLocation: location })
-    setLocationSearchTerm("")
+    setLocationSearchTerm(location)
     setShowLocationDropdown(false)
 
     // Clear any error
     setErrors((prev) => ({ ...prev, companyLocation: "" }))
+  }
+
+  const handleIndustryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setIndustrySearchTerm(value)
+
+    // Also update the form data
+    updateFormData({ companyIndustry: value })
+
+    // Validate field
+    const error = validateField("companyIndustry", value)
+    setErrors((prev) => ({ ...prev, companyIndustry: error }))
+  }
+
+  const handleIndustrySelect = (industry: string) => {
+    updateFormData({ companyIndustry: industry })
+    setIndustrySearchTerm(industry)
+    setShowIndustryDropdown(false)
+
+    // Clear any error
+    setErrors((prev) => ({ ...prev, companyIndustry: "" }))
   }
 
   const handleSelectChange = (name: string, value: string) => {
@@ -658,7 +771,7 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-3xl mx-auto">
       <div className="space-y-2">
         <Label htmlFor="companyName">
           Company Name <span className="text-red-500">*</span>
@@ -674,7 +787,7 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
         {errors.companyName && <p className="text-sm text-red-500">{errors.companyName}</p>}
       </div>
 
-      <div className="space-y-2 relative">
+      <div className="space-y-2">
         <Label htmlFor="companyLocation">
           Company Headquarters <span className="text-red-500">*</span>
         </Label>
@@ -682,10 +795,11 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
           <Input
             id="companyLocation"
             name="companyLocation"
+            ref={locationInputRef}
             value={formData.companyLocation}
             onChange={handleLocationChange}
             onFocus={() => {
-              if (filteredLocations.length > 0) {
+              if (locationSearchTerm && filteredLocations.length > 0) {
                 setShowLocationDropdown(true)
               }
             }}
@@ -698,7 +812,11 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
         {showLocationDropdown && (
           <div
             ref={locationDropdownRef}
-            className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
+            className="absolute z-10 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
+            style={{
+              width: locationInputRef.current ? locationInputRef.current.offsetWidth : "auto",
+              maxWidth: "100%",
+            }}
           >
             {filteredLocations.map((location, index) => (
               <div
@@ -719,21 +837,44 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
           <Label htmlFor="companyIndustry">
             Industry <span className="text-red-500">*</span>
           </Label>
-          <Select
-            value={formData.companyIndustry}
-            onValueChange={(value) => handleSelectChange("companyIndustry", value)}
-          >
-            <SelectTrigger id="companyIndustry" className={errors.companyIndustry ? "border-red-500" : ""}>
-              <SelectValue placeholder="Select industry">{formData.companyIndustry || "Select industry"}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {industries.map((industry) => (
-                <SelectItem key={industry} value={industry}>
+          <div className="relative">
+            <Input
+              id="companyIndustry"
+              name="companyIndustry"
+              ref={industryInputRef}
+              value={formData.companyIndustry}
+              onChange={handleIndustryChange}
+              onFocus={() => {
+                if (industrySearchTerm && filteredIndustries.length > 0) {
+                  setShowIndustryDropdown(true)
+                }
+              }}
+              placeholder="Search industry..."
+              required
+              className={errors.companyIndustry ? "border-red-500" : ""}
+            />
+            <Search className="h-4 w-4 absolute right-3 top-3 text-gray-400" />
+          </div>
+          {showIndustryDropdown && (
+            <div
+              ref={industryDropdownRef}
+              className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
+              style={{
+                width: industryInputRef.current ? industryInputRef.current.offsetWidth : "auto",
+                maxWidth: "100%",
+              }}
+            >
+              {filteredIndustries.map((industry, index) => (
+                <div
+                  key={index}
+                  className="px-4 py-2 hover:bg-purple-50 cursor-pointer text-sm"
+                  onClick={() => handleIndustrySelect(industry)}
+                >
                   {industry}
-                </SelectItem>
+                </div>
               ))}
-            </SelectContent>
-          </Select>
+            </div>
+          )}
           {errors.companyIndustry && <p className="text-sm text-red-500">{errors.companyIndustry}</p>}
         </div>
 
@@ -758,7 +899,9 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="aboutCompany">About Company</Label>
+        <Label htmlFor="aboutCompany">
+          About Company <span className="text-red-500">*</span>
+        </Label>
         <Textarea
           id="aboutCompany"
           name="aboutCompany"
@@ -766,17 +909,21 @@ export default function EmployeeCompanyDetails({ formData, updateFormData }: Com
           onChange={handleChange}
           placeholder="Brief description about your company"
           rows={4}
+          required
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="companyWebsite">Company Website</Label>
+        <Label htmlFor="companyWebsite">
+          Company Website <span className="text-red-500">*</span>{" "}
+        </Label>
         <Input
           id="companyWebsite"
           name="companyWebsite"
           value={formData.companyWebsite}
           onChange={handleChange}
           placeholder="https://www.example.com"
+          required
         />
       </div>
 

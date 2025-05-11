@@ -74,7 +74,7 @@ export default function EmployeeForgotPasswordPage() {
               />
               <p className="text-xs text-gray-500">Please enter your official company email address</p>
             </div>
-            <Button type="submit" className="w-full bg-black text-white hover:bg-green-500 hover:text-black" disabled={isSubmitting}>
+            <Button type="submit" className="w-full bg-black text-white hover:bg-green-600 hover:text-black" disabled={isSubmitting}>
               {isSubmitting ? "Sending..." : "Send Reset Instructions"}
             </Button>
           </form>

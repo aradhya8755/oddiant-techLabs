@@ -27,13 +27,13 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
               <Button
                 asChild
-                className="bg-white text-black hover:text-white hover:bg-green-500 rounded-full px-8 py-6 text-lg"
+                className="bg-white text-black hover:text-white hover:bg-green-600 rounded-full px-8 py-6 text-lg"
               >
                 <Link href="/solutions">Explore Solutions</Link>
               </Button>
               <Button
                 asChild
-                className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-500"
+                className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-600"
               >
                 <Link href="/contact">Contact Us</Link>
               </Button>
@@ -93,7 +93,7 @@ export default function Home() {
               <p className="text-gray-400 mb-8"></p>
               <Button
                 asChild
-                className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-500"
+                className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-600"
               >
                 <Link href="/company">Learn More</Link>
               </Button>
@@ -121,7 +121,7 @@ export default function Home() {
             </p>
             <Button
               asChild
-              className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-500"
+              className="rounded-full px-8 py-6 text-lg bg-white text-black hover:text-white hover:bg-green-600"
             >
               <Link href="/contact">Get Started</Link>
             </Button>

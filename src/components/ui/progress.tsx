@@ -16,7 +16,7 @@ const Progress = React.forwardRef<
 
   const colorClass = {
     blue: "bg-green-700",
-    green: "bg-green-500",
+    green: "bg-green-600",
     yellow: "bg-yellow-500",
     purple: "bg-purple-500",
     red: "bg-red-500"

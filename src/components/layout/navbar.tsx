@@ -63,7 +63,7 @@ export function Navbar() {
             <Link href="/join-now">
               <Button
                 variant="outline"
-                className="bg-black text-white border-white hover:bg-green-500 hover:text-black"
+                className="bg-black text-white border-white hover:bg-green-600 hover:text-black"
               >
                 Join Now
               </Button>
@@ -101,7 +101,7 @@ export function Navbar() {
                   <Link href="/join-now" onClick={() => setIsOpen(false)}>
                     <Button
                       variant="outline"
-                      className="w-full bg-transparent hover:bg-green-500 hover:text-black text-white border-white"
+                      className="w-full bg-transparent hover:bg-green-600 hover:text-black text-white border-white"
                     >
                       Join Now
                     </Button>

@@ -5,7 +5,7 @@ import { UserIcon, Briefcase } from "lucide-react"
 
 export default function JoinNowPage() {
   return (
-    <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center min-h-screen">
+    <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center min-h-screen ">
       <h1 className="text-3xl font-bold mb-8 text-center text-black">Join Our Platform</h1>
       <p className="text-xl text-black text-center mb-12">Choose how you want to join Oddiant Techlabs</p>
 
@@ -16,22 +16,22 @@ export default function JoinNowPage() {
             <div className="mx-auto bg-blue-100 p-3 rounded-full w-16 h-16 flex items-center justify-center mb-4">
               <UserIcon className="h-8 w-8 text-blue-600" />
             </div>
-            <CardTitle>User Portal</CardTitle>
+            <CardTitle>Candidate Portal</CardTitle>
             <CardDescription>Join as a job seeker or individual</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-gray-500 mb-6">
-              Create an account to access exclusive resources, track your applications, and connect with opportunities.
+              Create an account to access exclusive resources, track your applications, and connect with opportunities and companies.
             </p>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Link href="/auth/register" className="w-full">
-              <Button size="lg" className="w-full bg-black text-white hover:bg-green-500 hover:text-black">
+              <Button size="lg" className="w-full bg-blue-700 text-white hover:bg-green-600 hover:text-black">
                 Register
               </Button>
             </Link>
             <Link href="/auth/login" className="w-full">
-              <Button size="lg" variant="outline" className="w-full hover:bg-green-500 hover:text-black">
+              <Button size="lg" variant="outline" className="w-full hover:bg-green-600 hover:text-black">
                 Sign In
               </Button>
             </Link>
@@ -49,18 +49,18 @@ export default function JoinNowPage() {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-gray-500 mb-6">
-              Sign up with your official email to access the dashboard and manage talent acquisition for your
+              Create an account with your official email to access the dashboard and manage talent acquisition for your
               organization.
             </p>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Link href="/auth/employee/register" className="w-full">
-              <Button size="lg" className="w-full bg-black text-white hover:bg-green-500 hover:text-black">
+              <Button size="lg" className="w-full bg-blue-700 text-white hover:bg-green-600 hover:text-black">
                 Register
               </Button>
             </Link>
             <Link href="/auth/employee/login" className="w-full">
-              <Button size="lg" variant="outline" className="w-full hover:bg-green-500 hover:text-black">
+              <Button size="lg" variant="outline" className="w-full hover:bg-green-600 hover:text-black">
                 Sign In
               </Button>
             </Link>

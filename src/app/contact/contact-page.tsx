@@ -390,7 +390,7 @@ ${formData.message}
                       </div>
                     </div>
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center text-green-400 flex-shrink-0">
+                      <div className="w-10 h-10 bg-green-600/20 rounded-full flex items-center justify-center text-green-400 flex-shrink-0">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 24 24"

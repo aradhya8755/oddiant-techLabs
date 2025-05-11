@@ -76,7 +76,7 @@ export default function ForgotPasswordPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full hover:text-black hover:bg-green-500" disabled={isSubmitting}>
+            <Button type="submit" className="w-full hover:text-black hover:bg-green-600" disabled={isSubmitting}>
               {isSubmitting ? "Sending..." : "Send Reset Instructions"}
             </Button>
           </form>

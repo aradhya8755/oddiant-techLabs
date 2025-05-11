@@ -110,7 +110,7 @@ export default function EmployeeLoginPage() {
             </div>
             <Button
               type="submit"
-              className="w-full bg-black text-white hover:bg-green-500 hover:text-black"
+              className="w-full bg-black text-white hover:bg-green-600 hover:text-black"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Logging in..." : "Login"}

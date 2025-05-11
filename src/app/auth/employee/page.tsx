@@ -25,7 +25,7 @@ export default function EmployeeAuthPage() {
           </CardContent>
           <CardFooter className="flex justify-center">
             <Link href="/auth/employee/register">
-              <Button size="lg" className="w-full bg-black text-white hover:bg-green-500 hover:text-black">
+              <Button size="lg" className="w-full bg-black text-white hover:bg-green-600 hover:text-black">
                 Register Now
               </Button>
             </Link>
@@ -47,7 +47,7 @@ export default function EmployeeAuthPage() {
           </CardContent>
           <CardFooter className="flex justify-center">
             <Link href="/auth/employee/login">
-              <Button size="lg" variant="outline" className="w-full bg-black text-white hover:bg-green-500 hover:text-black">
+              <Button size="lg" variant="outline" className="w-full bg-black text-white hover:bg-green-600 hover:text-black">
                 Sign In
               </Button>
             </Link>
