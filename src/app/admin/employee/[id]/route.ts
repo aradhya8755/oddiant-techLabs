@@ -2,19 +2,15 @@ import { NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 
-// Define the params interface explicitly
-interface EmployeeParams {
-  params: {
-    id: string
-  }
-}
+
 
 export async function GET(
   request: NextRequest,
-  { params }: EmployeeParams
+  params: Promise<{id: string}>
 ) {
   try {
-    const employeeId = params.id
+    const awaitedParams = await params
+    const employeeId = awaitedParams.id
 
     if (!employeeId) {
       return NextResponse.json({ success: false, message: "Employee ID is required" }, { status: 400 })
