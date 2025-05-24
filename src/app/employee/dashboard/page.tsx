@@ -11,17 +11,18 @@ import {
   User,
   Briefcase,
   Settings,
-  LogOut,
   Users,
-  BarChart,
   Calendar,
-  Clock,
   PlusCircle,
   Search,
   RefreshCw,
   Download,
+  LogOut,
+  Clock,
   Send,
   UserCog,
+  BarChart,
+  ClipboardCheck,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -29,19 +30,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import JobPostingForm from "@/components/job-posting-form"
+import { CandidateSelectionProvider } from "@/components/candidate-selection-context"
+import { useCandidateSelection } from "@/components/candidate-selection-context"
+import { CandidatesFilterBar } from "@/components/candidates/candidates-filter-bar"
+import { FilterDropdown } from "@/components/ats/filter-dropdown"
 import { FilterPanel } from "@/components/ats/filter-panel"
 import { CandidateList } from "@/components/ats/candidate-list"
 import AvatarUpload from "@/components/avatar-upload"
-import { CandidateSelectionProvider, useCandidateSelection } from "@/components/candidate-selection-context"
-import { CandidatesFilterBar } from "@/components/candidates/candidates-filter-bar"
-import { FilterDropdown } from "@/components/ats/filter-dropdown"
+import JobPostingForm from "@/components/job-posting-form"
+import withAuth from "@/components/auth/withAuth"
+import type { Employee } from "@/types"
 
 interface EmployeeData {
   _id: string
   firstName: string
   lastName: string
   email: string
+  alternativeEmail?: string
   designation: string
   companyName: string
   companyLocation: string
@@ -80,6 +85,8 @@ interface Candidate {
   currentSalary: number
   age: number
   industry?: string
+  collection?: string
+  employerId: string // Added for data isolation
 }
 
 interface JobPosting {
@@ -93,27 +100,40 @@ interface JobPosting {
   interviews?: number
   createdAt: string
   updatedAt?: string
+  employerId: string // Added for data isolation
 }
 
 interface Interview {
   _id: string
-  candidate: string
+  candidate: {
+    name: string
+    email: string
+  }
   position: string
   date: string
   time: string
   jobId?: string
+  status: string
+  meetingLink?: string
+  notes?: string
+  duration?: number
+  employerId: string // Added for data isolation
 }
 
-// Wrap the main component with the CandidateSelectionProvider
-export default function EmployeeDashboardWrapper() {
-  return (
-    <CandidateSelectionProvider>
-      <EmployeeDashboard />
-    </CandidateSelectionProvider>
-  )
+interface DashboardStats {
+  activeCandidates: number
+  openPositions: number
+  interviewsToday: number
+  hiringSuccessRate: number
 }
 
-function EmployeeDashboard() {
+// Define props interface for EmployeeDashboard
+interface EmployeeDashboardProps {
+  userData: Employee | null
+}
+
+// Main component with typed props
+function EmployeeDashboard({ userData }: EmployeeDashboardProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const tabParam = searchParams.get("tab")
@@ -125,11 +145,11 @@ function EmployeeDashboard() {
   const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([])
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([])
   const [interviews, setInterviews] = useState<Interview[]>([])
-  const [dashboardStats, setDashboardStats] = useState({
-    activeCandidate: 0,
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    activeCandidates: 0,
     openPositions: 0,
     interviewsToday: 0,
-    hiringRate: 0,
+    hiringSuccessRate: 0,
   })
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
@@ -140,6 +160,7 @@ function EmployeeDashboard() {
     firstName: "",
     lastName: "",
     email: "",
+    alternativeEmail: "",
     phone: "",
   })
   const [passwordInfo, setPasswordInfo] = useState({
@@ -155,6 +176,18 @@ function EmployeeDashboard() {
   const [lastRefreshed, setLastRefreshed] = useState(new Date())
   const [isExporting, setIsExporting] = useState(false)
   const [isSingleExporting, setIsSingleExporting] = useState<string | null>(null)
+  const [emailError, setEmailError] = useState("")
+  const [globalSearchTerm, setGlobalSearchTerm] = useState("")
+  const [searchResults, setSearchResults] = useState<{
+    candidates: Candidate[]
+    jobs: JobPosting[]
+    interviews: Interview[]
+  }>({
+    candidates: [],
+    jobs: [],
+    interviews: [],
+  })
+  const [showSearchResults, setShowSearchResults] = useState(false)
 
   // Get candidate selection context
   const { selectedCandidates, toggleCandidateSelection, selectAllCandidates, clearSelectedCandidates, isSelected } =
@@ -210,10 +243,92 @@ function EmployeeDashboard() {
     }
   }, [activeTab, router, tabParam])
 
+  // Global search function
+  const handleGlobalSearch = useCallback(() => {
+    if (!globalSearchTerm.trim()) {
+      setShowSearchResults(false)
+      return
+    }
+
+    const searchTermLower = globalSearchTerm.toLowerCase()
+
+    // Search in candidates
+    const matchedCandidates = candidates.filter(
+      (candidate) =>
+        candidate.name.toLowerCase().includes(searchTermLower) ||
+        candidate.email.toLowerCase().includes(searchTermLower) ||
+        candidate.role.toLowerCase().includes(searchTermLower) ||
+        candidate.status.toLowerCase().includes(searchTermLower) ||
+        candidate.location.toLowerCase().includes(searchTermLower),
+    )
+
+    // Search in jobs
+    const matchedJobs = jobPostings.filter(
+      (job) =>
+        job.jobTitle.toLowerCase().includes(searchTermLower) ||
+        job.department.toLowerCase().includes(searchTermLower) ||
+        job.jobType.toLowerCase().includes(searchTermLower) ||
+        job.jobLocation.toLowerCase().includes(searchTermLower),
+    )
+
+    // Search in interviews
+    const matchedInterviews = interviews.filter(
+      (interview) =>
+        interview.candidate.name.toLowerCase().includes(searchTermLower) ||
+        interview.candidate.email.toLowerCase().includes(searchTermLower) ||
+        interview.position.toLowerCase().includes(searchTermLower) ||
+        interview.status.toLowerCase().includes(searchTermLower) ||
+        interview.date.toLowerCase().includes(searchTermLower),
+    )
+
+    setSearchResults({
+      candidates: matchedCandidates,
+      jobs: matchedJobs,
+      interviews: matchedInterviews,
+    })
+
+    setShowSearchResults(true)
+  }, [globalSearchTerm, candidates, jobPostings, interviews])
+
+  // Effect to trigger search when search term changes
+  useEffect(() => {
+    if (globalSearchTerm.trim()) {
+      handleGlobalSearch()
+    } else {
+      setShowSearchResults(false)
+    }
+  }, [globalSearchTerm, handleGlobalSearch])
+
+  // Handle search result click
+  const handleSearchResultClick = (type: string, id: string) => {
+    setShowSearchResults(false)
+
+    if (type === "candidate") {
+      router.push(`/employee/candidates/${id}`)
+    } else if (type === "job") {
+      router.push(`/employee/jobs/${id}`)
+    } else if (type === "interview") {
+      router.push(`/employee/interviews/${id}`)
+    }
+  }
+
   // Memoized fetch functions to avoid recreating them on every render
   const fetchCandidates = useCallback(async () => {
     try {
-      const response = await fetch("/api/employee/candidates")
+      if (!employee || !employee._id) {
+        console.log("No employee data available, skipping candidate fetch")
+        return
+      }
+
+      const response = await fetch("/api/employee/candidates", {
+        // Add cache busting to prevent caching
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      })
 
       if (!response.ok) {
         throw new Error("Failed to fetch candidates")
@@ -221,8 +336,15 @@ function EmployeeDashboard() {
 
       const data = await response.json()
 
+      // Filter candidates to only show those belonging to the current employee
+      const employeeCandidates = data.candidates.filter((candidate: any) => {
+        return candidate.employerId === employee._id || candidate.companyId === employee._id
+      })
+
+      console.log(`Filtered ${data.candidates.length} candidates to ${employeeCandidates.length} for this employee`)
+
       // Format the data
-      const formattedCandidates = data.candidates.map((candidate: any) => ({
+      const formattedCandidates = employeeCandidates.map((candidate: any) => ({
         _id: candidate._id,
         name: candidate.name,
         email: candidate.email,
@@ -230,6 +352,25 @@ function EmployeeDashboard() {
         status: candidate.status,
         avatar: candidate.avatar || "/placeholder.svg?height=40&width=40",
         appliedDate: new Date(candidate.createdAt).toLocaleDateString(),
+        skills: candidate.skills || [],
+        location: candidate.location || "",
+        yearsOfExperience: candidate.yearsOfExperience || 0,
+        currentPosition: candidate.currentPosition || "",
+        content: candidate.content || "",
+        firstName: candidate.firstName || "",
+        lastName: candidate.lastName || "",
+        phone: candidate.phone || "",
+        website: candidate.website || "",
+        experience: candidate.experience || [],
+        education: candidate.education || [],
+        matchScore: candidate.matchScore || 0,
+        gender: candidate.gender || "",
+        state: candidate.state || "",
+        currentSalary: candidate.currentSalary || 0,
+        age: candidate.age || 0,
+        industry: candidate.industry || "",
+        collection: candidate.collection || "candidates",
+        employerId: candidate.employerId || employee._id, // Ensure employerId is set
       }))
 
       setCandidates(formattedCandidates)
@@ -238,18 +379,24 @@ function EmployeeDashboard() {
       // Update dashboard stats
       setDashboardStats((prev) => ({
         ...prev,
-        activeCandidate: formattedCandidates.length,
+        activeCandidates: formattedCandidates.length,
       }))
     } catch (error) {
       console.error("Error fetching candidates:", error)
       toast.error("Failed to load candidates")
     }
-  }, [])
+  }, [employee])
 
   const fetchJobPostings = useCallback(async () => {
     try {
+      if (!employee || !employee._id) {
+        console.log("No employee data available, skipping job postings fetch")
+        return
+      }
+
       const response = await fetch("/api/employee/jobs", {
         // Add cache busting parameter to prevent caching
+        cache: "no-store",
         headers: {
           "Cache-Control": "no-cache",
           Pragma: "no-cache",
@@ -262,8 +409,15 @@ function EmployeeDashboard() {
 
       const data = await response.json()
 
+      // Filter jobs to only show those belonging to the current employee
+      const employeeJobs = data.jobs.filter((job: any) => {
+        return job.employerId === employee._id || job.companyId === employee._id
+      })
+
+      console.log(`Filtered ${data.jobs.length} jobs to ${employeeJobs.length} for this employee`)
+
       // Format the data
-      const formattedJobs = data.jobs.map((job: any) => {
+      const formattedJobs = employeeJobs.map((job: any) => {
         // Calculate days left based on job duration or default to 30 days
         const createdDate = new Date(job.createdAt)
         const durationDays = job.duration || 30
@@ -284,6 +438,7 @@ function EmployeeDashboard() {
           interviews: job.interviews || 0,
           createdAt: new Date(job.createdAt).toLocaleDateString(),
           updatedAt: job.updatedAt ? new Date(job.updatedAt).toISOString() : undefined,
+          employerId: job.employerId || employee._id, // Ensure employerId is set
         }
       })
 
@@ -298,12 +453,18 @@ function EmployeeDashboard() {
       console.error("Error fetching job postings:", error)
       toast.error("Failed to load job postings")
     }
-  }, [])
+  }, [employee])
 
   const fetchInterviews = useCallback(async () => {
     try {
+      if (!employee || !employee._id) {
+        console.log("No employee data available, skipping interviews fetch")
+        return
+      }
+
       const response = await fetch("/api/employee/interviews", {
         // Add cache busting parameter to prevent caching
+        cache: "no-store",
         headers: {
           "Cache-Control": "no-cache",
           Pragma: "no-cache",
@@ -316,8 +477,19 @@ function EmployeeDashboard() {
 
       const data = await response.json()
 
+      // Filter interviews to only show those belonging to the current employee
+      const employeeInterviews = data.interviews.filter((interview: any) => {
+        return (
+          interview.scheduledBy === employee._id ||
+          interview.employeeId === employee._id ||
+          interview.companyId === employee._id
+        )
+      })
+
+      console.log(`Filtered ${data.interviews.length} interviews to ${employeeInterviews.length} for this employee`)
+
       // Format the data
-      const formattedInterviews = data.interviews.map((interview: any) => {
+      const formattedInterviews = employeeInterviews.map((interview: any) => {
         const interviewDate = new Date(interview.date)
         return {
           _id: interview._id,
@@ -326,6 +498,11 @@ function EmployeeDashboard() {
           date: interviewDate.toLocaleDateString(),
           time: interview.time,
           jobId: interview.jobId || undefined,
+          status: interview.status || "Scheduled",
+          meetingLink: interview.meetingLink,
+          notes: interview.notes,
+          duration: interview.duration,
+          employerId: interview.scheduledBy || employee._id, // Ensure employerId is set
         }
       })
 
@@ -333,7 +510,7 @@ function EmployeeDashboard() {
 
       // Count today's interviews
       const today = new Date().toDateString()
-      const todayInterviews = data.interviews.filter(
+      const todayInterviews = employeeInterviews.filter(
         (interview: any) => new Date(interview.date).toDateString() === today,
       ).length
 
@@ -341,7 +518,7 @@ function EmployeeDashboard() {
       setDashboardStats((prev) => ({
         ...prev,
         interviewsToday: todayInterviews,
-        hiringRate: 78, // Default value, could be calculated based on actual data
+        hiringSuccessRate: 78, // Default value, could be calculated based on actual data
       }))
 
       // Update job postings with interview counts
@@ -350,7 +527,7 @@ function EmployeeDashboard() {
       console.error("Error fetching interviews:", error)
       toast.error("Failed to load interviews")
     }
-  }, [])
+  }, [employee])
 
   // Update job postings with interview counts
   const updateJobPostingsWithInterviewCounts = useCallback((interviewsData: Interview[]) => {
@@ -374,35 +551,67 @@ function EmployeeDashboard() {
     const fetchEmployeeData = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch("/api/employee/profile")
 
-        if (response.status === 401) {
-          router.push("/auth/employee/login")
-          return
+        // Use the user data passed from withAuth HOC
+        if (userData) {
+          setEmployee(userData)
+
+          // Initialize personal info form
+          setPersonalInfo({
+            firstName: userData.firstName || "",
+            lastName: userData.lastName || "",
+            email: userData.email || "",
+            alternativeEmail: userData.alternativeEmail || "",
+            phone: userData.phone || "",
+          })
+
+          // Initialize notification settings
+          if (userData.notificationSettings) {
+            setNotificationSettings(userData.notificationSettings)
+          }
+
+          // Fetch dashboard data
+          await fetchDashboardData()
+        } else {
+          // Fallback to API call if user data is not available
+          const response = await fetch("/api/employee/profile", {
+            cache: "no-store",
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+              Expires: "0",
+            },
+          })
+
+          if (response.status === 401) {
+            router.push("/auth/employee/login")
+            return
+          }
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch employee data")
+          }
+
+          const data = await response.json()
+          setEmployee(data.employee)
+
+          // Initialize personal info form
+          setPersonalInfo({
+            firstName: data.employee.firstName || "",
+            lastName: data.employee.lastName || "",
+            email: data.employee.email || "",
+            alternativeEmail: data.employee.alternativeEmail || "",
+            phone: data.employee.phone || "",
+          })
+
+          // Initialize notification settings
+          if (data.employee.notificationSettings) {
+            setNotificationSettings(data.employee.notificationSettings)
+          }
+
+          // Fetch dashboard data
+          await fetchDashboardData()
         }
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch employee data")
-        }
-
-        const data = await response.json()
-        setEmployee(data.employee)
-
-        // Initialize personal info form
-        setPersonalInfo({
-          firstName: data.employee.firstName || "",
-          lastName: data.employee.lastName || "",
-          email: data.employee.email || "",
-          phone: data.employee.phone || "",
-        })
-
-        // Initialize notification settings
-        if (data.employee.notificationSettings) {
-          setNotificationSettings(data.employee.notificationSettings)
-        }
-
-        // Fetch additional data
-        await Promise.all([fetchCandidates(), fetchJobPostings(), fetchInterviews()])
       } catch (error) {
         toast.error("Error loading profile data")
         console.error(error)
@@ -412,16 +621,50 @@ function EmployeeDashboard() {
     }
 
     fetchEmployeeData()
+  }, [router, userData])
 
-    // Set up polling for real-time updates
-    const intervalId = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        refreshData(false)
+  // Effect to fetch data after employee data is loaded
+  useEffect(() => {
+    if (employee && employee._id) {
+      // Fetch additional data
+      Promise.all([fetchCandidates(), fetchJobPostings(), fetchInterviews()]).catch((error) => {
+        console.error("Error fetching dashboard data:", error)
+      })
+    }
+  }, [employee, fetchCandidates, fetchJobPostings, fetchInterviews])
+
+  // Fetch dashboard data from the new API endpoint
+  const fetchDashboardData = async () => {
+    try {
+      if (!employee || !employee._id) {
+        console.log("No employee data available, skipping dashboard stats fetch")
+        return
       }
-    }, 30000) // Poll every 30 seconds
 
-    return () => clearInterval(intervalId)
-  }, [router, fetchCandidates, fetchJobPostings, fetchInterviews])
+      setIsRefreshing(true)
+      const response = await fetch("/api/employee/dashboard/stats", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch dashboard data")
+      }
+
+      const data = await response.json()
+      setDashboardStats(data.stats)
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error)
+      // Don't show error toast as this is a background fetch
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
+  }
 
   // Effect to update job postings with interview counts whenever interviews change
   useEffect(() => {
@@ -438,9 +681,14 @@ function EmployeeDashboard() {
   // Function to refresh all data
   const refreshData = async (showToast = true) => {
     try {
+      if (!employee || !employee._id) {
+        console.log("No employee data available, skipping data refresh")
+        return
+      }
+
       setIsRefreshing(true)
 
-      await Promise.all([fetchCandidates(), fetchJobPostings(), fetchInterviews()])
+      await Promise.all([fetchDashboardData(), fetchCandidates(), fetchJobPostings(), fetchInterviews()])
 
       setLastRefreshed(new Date())
 
@@ -473,8 +721,38 @@ function EmployeeDashboard() {
     }
   }
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
   const handleSavePersonalInfo = async () => {
     try {
+      // Reset error state
+      setEmailError("")
+
+      // Validate email
+      if (personalInfo.email && !validateEmail(personalInfo.email)) {
+        setEmailError("Please enter a valid email address")
+        return
+      }
+
+      // Validate alternative email if provided
+      if (personalInfo.alternativeEmail && !validateEmail(personalInfo.alternativeEmail)) {
+        setEmailError("Please enter a valid alternative email address")
+        return
+      }
+
+      // Check if emails are the same
+      if (
+        personalInfo.email &&
+        personalInfo.alternativeEmail &&
+        personalInfo.email.toLowerCase() === personalInfo.alternativeEmail.toLowerCase()
+      ) {
+        setEmailError("Primary and alternative emails cannot be the same")
+        return
+      }
+
       setIsUpdatingProfile(true)
 
       const response = await fetch("/api/employee/profile/update", {
@@ -486,12 +764,15 @@ function EmployeeDashboard() {
           firstName: personalInfo.firstName,
           lastName: personalInfo.lastName,
           phone: personalInfo.phone,
+          alternativeEmail: personalInfo.alternativeEmail,
           designation: employee?.designation,
+          email: personalInfo.email, // Include primary email in the update
         }),
       })
 
       if (!response.ok) {
-        throw new Error("Failed to update profile")
+        const data = await response.json()
+        throw new Error(data.message || "Failed to update profile")
       }
 
       // Update the employee state with new data
@@ -502,13 +783,16 @@ function EmployeeDashboard() {
           firstName: personalInfo.firstName,
           lastName: personalInfo.lastName,
           phone: personalInfo.phone,
+          alternativeEmail: personalInfo.alternativeEmail,
+          email: personalInfo.email, // Update primary email in state
         }
       })
 
       toast.success("Personal information updated successfully")
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating profile:", error)
-      toast.error("Failed to update personal information")
+      setEmailError(error.message || "Failed to update personal information")
+      toast.error(error.message || "Failed to update personal information")
     } finally {
       setIsUpdatingProfile(false)
     }
@@ -631,12 +915,24 @@ function EmployeeDashboard() {
 
   const handleCreateJobPosting = async (jobData: any) => {
     try {
+      if (!employee || !employee._id) {
+        toast.error("You must be logged in to create a job posting")
+        return
+      }
+
+      // Add employee ID to job data for proper isolation
+      const jobWithEmployeeId = {
+        ...jobData,
+        employerId: employee._id,
+        companyId: employee._id,
+      }
+
       const response = await fetch("/api/employee/jobs", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(jobData),
+        body: JSON.stringify(jobWithEmployeeId),
       })
 
       if (!response.ok) {
@@ -831,15 +1127,35 @@ function EmployeeDashboard() {
   // ATS: Fetch Resumes from DB
   const fetchAtsResumes = useCallback(async () => {
     try {
+      if (!employee || !employee._id) {
+        console.log("No employee data available, skipping ATS resumes fetch")
+        return
+      }
+
       setAtsIsLoading(true)
-      const response = await fetch("/api/employee/candidates") // Assuming your API endpoint for candidates is the same
+      const response = await fetch("/api/employee/candidates", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      })
 
       if (!response.ok) {
         throw new Error("Failed to fetch ATS resumes")
       }
 
       const data = await response.json()
-      const formattedResumes = data.candidates.map((candidate: any) => ({
+
+      // Filter resumes to only show those belonging to the current employee
+      const employeeResumes = data.candidates.filter((candidate: any) => {
+        return candidate.employerId === employee._id || candidate.companyId === employee._id
+      })
+
+      console.log(`Filtered ${data.candidates.length} resumes to ${employeeResumes.length} for this employee`)
+
+      const formattedResumes = employeeResumes.map((candidate: any) => ({
         _id: candidate._id,
         name: candidate.name,
         email: candidate.email,
@@ -864,6 +1180,7 @@ function EmployeeDashboard() {
         currentSalary: candidate.currentSalary || 0,
         age: candidate.age || 25,
         industry: candidate.industry || "",
+        employerId: candidate.employerId || employee._id, // Ensure employerId is set
       }))
       setAtsResumes(formattedResumes)
       setAtsFilteredResumes(formattedResumes)
@@ -876,7 +1193,7 @@ function EmployeeDashboard() {
     } finally {
       setAtsIsLoading(false)
     }
-  }, [])
+  }, [employee])
 
   // Prepare filter options for dropdowns
   const prepareFilterOptions = (resumes: Candidate[]) => {
@@ -1189,6 +1506,11 @@ function EmployeeDashboard() {
 
   const handleAtsExport = async () => {
     try {
+      if (!employee || !employee._id) {
+        toast.error("You must be logged in to export candidates")
+        return
+      }
+
       setAtsIsExporting(true)
       toast.info("Preparing export, please wait...")
 
@@ -1229,6 +1551,7 @@ function EmployeeDashboard() {
               },
               body: JSON.stringify({
                 candidateIds: candidateIds,
+                employeeId: employee._id, // Add employee ID for data isolation
               }),
             },
             60000,
@@ -1360,8 +1683,20 @@ function EmployeeDashboard() {
 
   // Fetch ATS resumes on mount
   useEffect(() => {
-    fetchAtsResumes()
-  }, [fetchAtsResumes])
+    if (employee && employee._id) {
+      fetchAtsResumes()
+    }
+  }, [employee, fetchAtsResumes])
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+    router.push(`/employee/dashboard?tab=${value}`, { scroll: false })
+  }
+
+  // Handle navigation to assessments dashboard
+  const handleAssessmentsClick = () => {
+    router.push("/employee/assessment/dashboard")
+  }
 
   if (isLoading) {
     return (
@@ -1393,13 +1728,110 @@ function EmployeeDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-8">
+      {/* <EmployeeNavbar /> */}
+
       <Toaster position="top-center" />
 
       {/* Header */}
       <header className="bg-black text-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-semibold">Employer Dashboard</h1>
+          <div className="flex items-center space-x-4">
+            <h1 className="text-xl font-semibold">Employer Dashboard</h1>
+            <div className="relative w-64 ml-4">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search dashboard..."
+                className="pl-8 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400 focus:border-blue-500"
+                value={globalSearchTerm}
+                onChange={(e) => setGlobalSearchTerm(e.target.value)}
+              />
+              {showSearchResults && (
+                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700">
+                  <div className="p-2">
+                    {searchResults.candidates.length === 0 &&
+                    searchResults.jobs.length === 0 &&
+                    searchResults.interviews.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 p-2">No results found</p>
+                    ) : (
+                      <>
+                        {searchResults.candidates.length > 0 && (
+                          <div className="mb-2">
+                            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 px-2">
+                              Candidates
+                            </h3>
+                            {searchResults.candidates.slice(0, 3).map((candidate) => (
+                              <div
+                                key={candidate._id}
+                                className="px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer"
+                                onClick={() => handleSearchResultClick("candidate", candidate._id)}
+                              >
+                                <p className="text-sm font-medium">{candidate.name}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{candidate.email}</p>
+                              </div>
+                            ))}
+                            {searchResults.candidates.length > 3 && (
+                              <p className="text-xs text-blue-500 px-2 pt-1">
+                                +{searchResults.candidates.length - 3} more candidates
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {searchResults.jobs.length > 0 && (
+                          <div className="mb-2">
+                            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 px-2">Jobs</h3>
+                            {searchResults.jobs.slice(0, 3).map((job) => (
+                              <div
+                                key={job._id}
+                                className="px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer"
+                                onClick={() => handleSearchResultClick("job", job._id)}
+                              >
+                                <p className="text-sm font-medium">{job.jobTitle}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {job.department} • {job.jobLocation}
+                                </p>
+                              </div>
+                            ))}
+                            {searchResults.jobs.length > 3 && (
+                              <p className="text-xs text-blue-500 px-2 pt-1">
+                                +{searchResults.jobs.length - 3} more jobs
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {searchResults.interviews.length > 0 && (
+                          <div>
+                            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 px-2">
+                              Interviews
+                            </h3>
+                            {searchResults.interviews.slice(0, 3).map((interview) => (
+                              <div
+                                key={interview._id}
+                                className="px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer"
+                                onClick={() => handleSearchResultClick("interview", interview._id)}
+                              >
+                                <p className="text-sm font-medium">{interview.candidate.name}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {interview.position} • {interview.date}
+                                </p>
+                              </div>
+                            ))}
+                            {searchResults.interviews.length > 3 && (
+                              <p className="text-xs text-blue-500 px-2 pt-1">
+                                +{searchResults.interviews.length - 3} more interviews
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
           <div className="flex items-center space-x-4">
             <span className="text-sm">
               Welcome, {employee.firstName} {employee.lastName}
@@ -1424,7 +1856,7 @@ function EmployeeDashboard() {
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
             <CardContent className="p-6 flex flex-col items-center justify-center">
               <Users className="h-8 w-8 mb-2" />
-              <p className="text-2xl font-bold">{dashboardStats.activeCandidate}</p>
+              <p className="text-2xl font-bold">{dashboardStats.activeCandidates}</p>
               <p className="text-sm opacity-80">Active Candidates</p>
             </CardContent>
           </Card>
@@ -1448,7 +1880,7 @@ function EmployeeDashboard() {
           <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white">
             <CardContent className="p-6 flex flex-col items-center justify-center">
               <BarChart className="h-8 w-8 mb-2" />
-              <p className="text-2xl font-bold">{dashboardStats.hiringRate}%</p>
+              <p className="text-2xl font-bold">{dashboardStats.hiringSuccessRate}%</p>
               <p className="text-sm opacity-80">Hiring Success Rate</p>
             </CardContent>
           </Card>
@@ -1467,8 +1899,8 @@ function EmployeeDashboard() {
           </Button>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-6 w-full max-w-3xl text-white mx-auto bg-gradient-to-br from-black to-black">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+          <TabsList className="grid grid-cols-7 w-full max-w-3xl text-white mx-auto bg-gradient-to-br from-black to-black">
             <TabsTrigger value="overview" className="flex items-center justify-center">
               <User className="h-4 w-4 mr-2" />
               Overview
@@ -1488,6 +1920,14 @@ function EmployeeDashboard() {
             <TabsTrigger value="ats" className="flex items-center justify-center">
               <Search className="h-4 w-4 mr-2" />
               ATS
+            </TabsTrigger>
+            <TabsTrigger
+              value="assessments"
+              onClick={handleAssessmentsClick}
+              className="flex items-center justify-center"
+            >
+              <ClipboardCheck className="h-4 w-4 mr-2" />
+              Assessments
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center justify-center">
               <Settings className="h-4 w-4 mr-2" />
@@ -1512,6 +1952,7 @@ function EmployeeDashboard() {
                       {employee.firstName} {employee.lastName}
                     </h3>
                     <p className="text-sm text-gray-500">{employee.email}</p>
+                    {employee.alternativeEmail && <p className="text-sm text-gray-500">{employee.alternativeEmail}</p>}
                   </div>
                   {employee.companyName && (
                     <div className="space-y-4">
@@ -1671,7 +2112,7 @@ function EmployeeDashboard() {
                             <Clock className="h-5 w-5 text-purple-600 dark:text-purple-300" />
                           </div>
                           <div>
-                            <p className="font-medium">{interview.candidate}</p>
+                            <p className="font-medium">{interview.candidate.name}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">{interview.position}</p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               {interview.date} at {interview.time}
@@ -1740,7 +2181,13 @@ function EmployeeDashboard() {
                           checked={
                             selectedCandidates.length === filteredCandidates.length && filteredCandidates.length > 0
                           }
-                          onCheckedChange={(checked) => selectAllCandidates(filteredCandidates.map((c) => c._id))}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              selectAllCandidates(filteredCandidates.map((c) => c._id))
+                            } else {
+                              clearSelectedCandidates()
+                            }
+                          }}
                           className="mr-2"
                         />
                         <Label htmlFor="select-all" className="cursor-pointer text-black font-bold">
@@ -1751,7 +2198,7 @@ function EmployeeDashboard() {
                       <div className="text-black font-bold">Position</div>
                       <div className="text-black font-bold">Status</div>
                       <div className="text-black font-bold">Applied Date</div>
-                      <div className="text-right col-span-1 text-black font-bold">Actions</div>
+                      <div className="text-right col-span-2 text-black font-bold">Actions</div>
                     </div>
 
                     {filteredCandidates.map((candidate, index) => (
@@ -1950,7 +2397,7 @@ function EmployeeDashboard() {
                               <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div>
-                              <h4 className="font-medium">{interview.candidate}</h4>
+                              <h4 className="font-medium">{interview.candidate.name}</h4>
                               <p className="text-sm text-gray-500 dark:text-gray-400">{interview.position}</p>
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 {interview.date} at {interview.time}
@@ -2005,7 +2452,7 @@ function EmployeeDashboard() {
                                   <Calendar className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                                 </div>
                                 <div>
-                                  <h4 className="font-medium">{interview.candidate}</h4>
+                                  <h4 className="font-medium">{interview.candidate.name}</h4>
                                   <p className="text-sm text-gray-500 dark:text-gray-400">{interview.position}</p>
                                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                     {interview.date} at {interview.time}
@@ -2177,6 +2624,7 @@ function EmployeeDashboard() {
                         }}
                         selectedCandidateId={atsSelectedResume?._id || null}
                         showViewButton={true}
+                        highlightKeywords={atsHighlightKeywords}
                       />
                     </div>
                   </div>
@@ -2219,12 +2667,20 @@ function EmployeeDashboard() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email">Email (Primary)</Label>
                       <Input
                         id="email"
                         value={personalInfo.email}
                         onChange={(e) => setPersonalInfo({ ...personalInfo, email: e.target.value })}
-                        disabled
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="alternativeEmail">Alternative Email (Optional)</Label>
+                      <Input
+                        id="alternativeEmail"
+                        value={personalInfo.alternativeEmail}
+                        onChange={(e) => setPersonalInfo({ ...personalInfo, alternativeEmail: e.target.value })}
+                        placeholder="Enter an alternative email address"
                       />
                     </div>
                     <div className="space-y-2">
@@ -2236,6 +2692,7 @@ function EmployeeDashboard() {
                       />
                     </div>
                   </div>
+                  {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
                   <Button onClick={handleSavePersonalInfo} disabled={isUpdatingProfile}>
                     {isUpdatingProfile ? (
                       <>
@@ -2409,3 +2866,15 @@ function EmployeeDashboard() {
     </div>
   )
 }
+
+// Wrap the main component with the CandidateSelectionProvider
+function EmployeeDashboardWrapper({ userData }: EmployeeDashboardProps) {
+  return (
+    <CandidateSelectionProvider>
+      <EmployeeDashboard userData={userData} />
+    </CandidateSelectionProvider>
+  )
+}
+
+// Export the wrapped component
+export default withAuth(EmployeeDashboardWrapper)

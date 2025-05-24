@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         // Check if student has already applied
         const application = await db.collection("job_applications").findOne({
           candidateId: new ObjectId(userId),
-          jobId: job._id,
+          jobId: new ObjectId(job._id.toString()),
         })
 
         return {

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, Info } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -46,7 +46,7 @@ export default function LoginPage() {
       }
 
       toast.success("Login successful!")
-      router.push("/student/dashboard")
+      router.push(data.redirectUrl || "/student/dashboard")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed")
     } finally {
@@ -75,6 +75,10 @@ export default function LoginPage() {
                 onChange={handleChange}
                 required
               />
+              <div className="flex items-start text-xs text-gray-500 mt-1">
+                <Info className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
+                <span>You can use either your primary or alternative email address to sign in</span>
+              </div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">

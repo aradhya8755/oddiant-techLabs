@@ -11,7 +11,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ApplicantStatus } from "@/components/candidates/applicant-status"
 import { EmployeeNavbar } from "@/components/layout/employee-navbar"
 import { Checkbox } from "@/components/ui/checkbox"
-import { use } from "react"
 
 interface Applicant {
   _id: string
@@ -33,7 +32,7 @@ interface Job {
 
 export default function JobApplicantsPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const jobId = use(params).id
+  const [jobId, setJobId] = useState<string>("")
   const [job, setJob] = useState<Job | null>(null)
   const [applicants, setApplicants] = useState<Applicant[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -41,20 +40,42 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
   const [selectedApplicants, setSelectedApplicants] = useState<string[]>([])
   const [isDownloading, setIsDownloading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (params && params.id) {
+      setJobId(params.id)
+    }
+  }, [params])
 
   const fetchData = async () => {
+    if (!jobId) return
+
     try {
       setIsLoading(true)
+      setError(null)
 
       // Fetch job details
-      const jobResponse = await fetch(`/api/employee/jobs/${jobId}`)
+      console.log(`Fetching job details for job ID: ${jobId}`)
+      const jobResponse = await fetch(`/api/employee/jobs/${jobId}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      })
+
       if (!jobResponse.ok) {
-        throw new Error("Failed to fetch job details")
+        throw new Error(`Failed to fetch job details: ${jobResponse.status} ${jobResponse.statusText}`)
       }
+
       const jobData = await jobResponse.json()
+      console.log("Job data:", jobData)
       setJob(jobData.job)
 
       // Fetch applicants for this job
+      console.log(`Fetching applicants for job ID: ${jobId}`)
       const applicantsResponse = await fetch(`/api/employee/jobs/${jobId}/applicants`, {
         cache: "no-store",
         headers: {
@@ -65,10 +86,11 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
       })
 
       if (!applicantsResponse.ok) {
-        throw new Error("Failed to fetch applicants")
+        throw new Error(`Failed to fetch applicants: ${applicantsResponse.status} ${applicantsResponse.statusText}`)
       }
 
       const applicantsData = await applicantsResponse.json()
+      console.log("Applicants data:", applicantsData)
 
       // Format the applied date for display
       const formattedApplicants = applicantsData.applicants.map((applicant: any) => ({
@@ -83,17 +105,23 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
       }))
 
       setApplicants(formattedApplicants)
-      toast.success("Data refreshed successfully")
+      if (isRefreshing) {
+        toast.success("Data refreshed successfully")
+      }
     } catch (error) {
       console.error("Error fetching data:", error)
+      setError(error instanceof Error ? error.message : "Failed to load data")
       toast.error("Failed to load data")
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
 
   useEffect(() => {
-    fetchData()
+    if (jobId) {
+      fetchData()
+    }
   }, [jobId])
 
   const filteredApplicants = applicants.filter(
@@ -126,7 +154,6 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
   const handleRefresh = async () => {
     setIsRefreshing(true)
     await fetchData()
-    setIsRefreshing(false)
   }
 
   const downloadExcel = async () => {
@@ -137,7 +164,7 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
 
     try {
       setIsDownloading(true)
-      toast.info("Preparing Excel file for download...")
+      toast.loading("Preparing Excel file for download...")
 
       const response = await fetch(`/api/employee/jobs/${jobId}/applicants/download`, {
         method: "POST",
@@ -170,6 +197,7 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
 
+      toast.dismiss()
       toast.success(`Successfully downloaded data for ${selectedApplicants.length} applicant(s)`)
     } catch (error) {
       console.error("Error downloading applicants data:", error)
@@ -183,6 +211,28 @@ export default function JobApplicantsPage({ params }: { params: { id: string } }
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+        <EmployeeNavbar />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Button variant="ghost" className="mb-6" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <h2 className="text-xl font-medium text-gray-700 dark:text-gray-300 mb-2">Error Loading Data</h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-6">{error}</p>
+              <Button onClick={handleRefresh}>Try Again</Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }

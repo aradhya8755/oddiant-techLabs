@@ -1,10 +1,10 @@
 "use client"
 
-import { Label } from "@/components/ui/label"
-
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
+import jsPDF from "jspdf"
+import html2canvas from "html2canvas"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,6 @@ import {
   Globe,
   Upload,
   PencilLine,
-  Save,
   X,
   GraduationCap,
   Award,
@@ -51,12 +50,16 @@ import {
   CalendarIcon,
   Hash,
   SlidersHorizontal,
+  Download,
+  AlertCircle,
+  
 } from "lucide-react"
 import { MapPinIcon } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 
 interface StudentData {
   _id: string
@@ -175,6 +178,7 @@ interface StudentData {
     preferredJobTypes: string[]
     preferredLocations: string[]
     shiftPreference: string
+    alternativeEmail?: string
   }
   avatar?: string
   currentSalary?: string
@@ -266,7 +270,7 @@ const getTotalExperience = (student: StudentData): string => {
   return "Not specified"
 }
 
-export default function StudentDashboard() {
+function StudentDashboardPage({ user }: { user: any }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const activeTab = searchParams.get("tab") || "jobs"
@@ -286,7 +290,19 @@ export default function StudentDashboard() {
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false)
   const [isEditingAvatar, setIsEditingAvatar] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pdfContentRef = useRef<HTMLDivElement>(null)
+
+  const [alternativeEmail, setAlternativeEmail] = useState("")
+  const [currentAlternativeEmail, setCurrentAlternativeEmail] = useState("")
+  const [alternativeEmailError, setAlternativeEmailError] = useState("")
+  const [isUpdatingAlternativeEmail, setIsUpdatingAlternativeEmail] = useState(false)
+  const [isRemovingAlternativeEmail, setIsRemovingAlternativeEmail] = useState(false)
+
+  const [primaryEmail, setPrimaryEmail] = useState("")
+  const [isUpdatingPrimaryEmail, setIsUpdatingPrimaryEmail] = useState(false)
+  const [primaryEmailError, setPrimaryEmailError] = useState("")
 
   // New filters for My Applications section
   const [applicationSearchTerm, setApplicationSearchTerm] = useState("")
@@ -299,49 +315,78 @@ export default function StudentDashboard() {
   const [applicationDateTo, setApplicationDateTo] = useState("")
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
+const [showRecentApplicationsOnly, setShowRecentApplicationsOnly] = useState(false);
+
+const [globalSearch, setGlobalSearch] = useState("");
+const [searchResults, setSearchResults] = useState({
+  jobs: [],
+  applications: []
+});
+
+
+// Add these state variables for job filters
+const [jobFilters, setJobFilters] = useState({
+  searchTerm: "",
+  location: "",
+  jobType: "",
+  recentOnly: false // New filter for recent jobs
+});
+
+// Store all jobs for filtering
+const [allJobs, setAllJobs] = useState([]);
+
   useEffect(() => {
     const fetchStudentData = async () => {
       try {
         setIsLoading(true)
         setError(null)
 
-        const response = await fetch("/api/student/profile", {
-          cache: "no-store",
-          headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
-        })
+        // Use the user data passed from withAuth HOC
+        if (user) {
+          setStudent(user as StudentData)
 
-        if (response.status === 401) {
-          router.push("/auth/login")
-          return
-        }
+          // Fetch settings
+          fetchSettings()
+        } else {
+          // Fallback to API call if user data is not available
+          const response = await fetch("/api/student/profile", {
+            cache: "no-store",
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+              Expires: "0",
+            },
+          })
 
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError("Student profile not found. Please complete your registration.")
-          } else {
-            setError("Failed to load profile data. Please try again later.")
+          if (response.status === 401) {
+            router.push("/auth/login")
+            return
           }
-          return
+
+          if (!response.ok) {
+            if (response.status === 404) {
+              setError("Student profile not found. Please complete your registration.")
+            } else {
+              setError("Failed to load profile data. Please try again later.")
+            }
+            return
+          }
+
+          const data = await response.json()
+
+          if (!data.success) {
+            setError(data.message || "Failed to load profile data")
+            return
+          }
+
+          // Log the student data for debugging
+          console.log("Student data:", data.student)
+
+          setStudent(data.student)
+
+          // Fetch settings
+          fetchSettings()
         }
-
-        const data = await response.json()
-
-        if (!data.success) {
-          setError(data.message || "Failed to load profile data")
-          return
-        }
-
-        // Log the student data for debugging
-        console.log("Student data:", data.student)
-
-        setStudent(data.student)
-
-        // Fetch settings
-        fetchSettings()
       } catch (error) {
         console.error("Error loading profile data:", error)
         setError("An unexpected error occurred. Please try again later.")
@@ -351,29 +396,11 @@ export default function StudentDashboard() {
     }
 
     fetchStudentData()
-  }, [router])
+  }, [router, user])
 
   const fetchSettings = async () => {
     try {
       const response = await fetch("/api/student/settings", {
-        cache: "no-store",
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          setSettings(data.settings)
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching settings:", error)
-    }
-  }
-
-  const fetchJobs = async () => {
-    try {
-      setIsLoadingJobs(true)
-      const response = await fetch("/api/jobs/available", {
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -382,47 +409,36 @@ export default function StudentDashboard() {
         },
       })
 
-      if (!response.ok) {
-        console.error("Failed to fetch jobs:", response.status)
-        // Use mock data if API fails
-        setJobs([
-          {
-            _id: "1",
-            jobTitle: "Frontend Developer",
-            jobLocation: "Remote",
-            experienceRange: "1-3 years",
-            jobType: "Full-time",
-            salaryRange: "$60,000 - $80,000",
-            companyName: "Tech Solutions Inc.",
-            skills: ["React", "JavaScript", "CSS"],
-            status: "open",
-            createdAt: new Date().toISOString(),
-            daysLeft: 30,
-          },
-          {
-            _id: "2",
-            jobTitle: "Backend Developer",
-            jobLocation: "New York",
-            experienceRange: "2-5 years",
-            jobType: "Full-time",
-            salaryRange: "$80,000 - $100,000",
-            companyName: "Data Systems LLC",
-            skills: ["Node.js", "Express", "MongoDB"],
-            status: "open",
-            createdAt: new Date().toISOString(),
-            daysLeft: 25,
-          },
-        ])
-        return
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setSettings(data.settings)
+          if (data.alternativeEmail) {
+            setCurrentAlternativeEmail(data.alternativeEmail)
+          }
+        }
       }
-
-      const data = await response.json()
-      console.log("Fetched jobs:", data.jobs)
-      setJobs(data.jobs || [])
     } catch (error) {
-      console.error("Error fetching jobs:", error)
+      console.error("Error fetching settings:", error)
+    }
+  }
+
+const fetchJobs = async () => {
+  try {
+    setIsLoadingJobs(true)
+    const response = await fetch("/api/jobs/available", {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    })
+
+    if (!response.ok) {
+      console.error("Failed to fetch jobs:", response.status)
       // Use mock data if API fails
-      setJobs([
+      const mockJobs = [
         {
           _id: "1",
           jobTitle: "Frontend Developer",
@@ -449,12 +465,53 @@ export default function StudentDashboard() {
           createdAt: new Date().toISOString(),
           daysLeft: 25,
         },
-      ])
-    } finally {
-      setIsLoadingJobs(false)
+      ];
+      setJobs(mockJobs);
+      setAllJobs(mockJobs); // Store all jobs for filtering
+      return
     }
-  }
 
+    const data = await response.json()
+    console.log("Fetched jobs:", data.jobs)
+    setJobs(data.jobs || [])
+    setAllJobs(data.jobs || []) // Store all jobs for filtering
+  } catch (error) {
+    console.error("Error fetching jobs:", error)
+    // Use mock data if API fails
+    const mockJobs = [
+      {
+        _id: "1",
+        jobTitle: "Frontend Developer",
+        jobLocation: "Remote",
+        experienceRange: "1-3 years",
+        jobType: "Full-time",
+        salaryRange: "$60,000 - $80,000",
+        companyName: "Tech Solutions Inc.",
+        skills: ["React", "JavaScript", "CSS"],
+        status: "open",
+        createdAt: new Date().toISOString(),
+        daysLeft: 30,
+      },
+      {
+        _id: "2",
+        jobTitle: "Backend Developer",
+        jobLocation: "New York",
+        experienceRange: "2-5 years",
+        jobType: "Full-time",
+        salaryRange: "$80,000 - $100,000",
+        companyName: "Data Systems LLC",
+        skills: ["Node.js", "Express", "MongoDB"],
+        status: "open",
+        createdAt: new Date().toISOString(),
+        daysLeft: 25,
+      },
+    ];
+    setJobs(mockJobs);
+    setAllJobs(mockJobs); // Store all jobs for filtering
+  } finally {
+    setIsLoadingJobs(false)
+  }
+}
   const fetchApplications = async () => {
     try {
       setIsLoadingApplications(true)
@@ -524,15 +581,119 @@ export default function StudentDashboard() {
     router.push(`/student/dashboard?tab=${value}`)
   }
 
+  const handleSearchResultClick = (type: string, id?: string) => {
+  // Clear the search
+  setGlobalSearch("");
+  
+  if (type === "job" && id) {
+    // Redirect to specific job details
+    router.push(`/jobs/${id}`);
+  } 
+  else if (type === "application" && id) {
+    // Redirect to specific application details
+    router.push(`/student/applications/${id}`);
+  }
+  else if (type === "profile") {
+    // Switch to profile tab
+    handleTabChange("profile");
+  }
+  else if (type === "settings") {
+    // Switch to settings tab
+    handleTabChange("settings");
+  }
+  else if (type === "jobs") {
+    // Switch to jobs tab
+    handleTabChange("jobs");
+  }
+  else if (type === "applications") {
+    // Switch to applications tab
+    handleTabChange("applications");
+  }
+};
+
   const handleAvatarEdit = () => {
     setIsEditingAvatar(true)
   }
+
+  const filterRecentApplications = (applications) => {
+  if (!showRecentApplicationsOnly) return applications;
+  
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  
+  return applications.filter(app => {
+    const appliedDate = new Date(app.appliedDate);
+    return appliedDate >= oneWeekAgo;
+  });
+};
 
   const handleAvatarUpload = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click()
     }
   }
+
+
+  // Add this search function with your other functions
+const handleSearchInput = (term) => {
+  setGlobalSearch(term);
+  
+  if (!term.trim()) {
+    setSearchResults({ jobs: [], applications: [] });
+    return;
+  }
+  
+  const searchTerm = term.toLowerCase();
+  
+  // Search in jobs
+  const matchedJobs = jobs.filter(job => 
+    job.jobTitle.toLowerCase().includes(searchTerm) ||
+    job.companyName.toLowerCase().includes(searchTerm) ||
+    job.jobLocation.toLowerCase().includes(searchTerm) ||
+    job.skills.some(skill => skill.toLowerCase().includes(searchTerm))
+  );
+  
+  // Search in applications
+  const matchedApplications = applications.filter(app => 
+    app.job.jobTitle.toLowerCase().includes(searchTerm) ||
+    app.job.companyName.toLowerCase().includes(searchTerm) ||
+    app.status.toLowerCase().includes(searchTerm)
+  );
+  
+  setSearchResults({
+    jobs: matchedJobs,
+    applications: matchedApplications
+  });
+};
+
+
+// Update this function to work with your data structure
+const filterRecentJobs = (days = 7) => {
+  const today = new Date();
+  const cutoffDate = new Date();
+  cutoffDate.setDate(today.getDate() - days);
+  
+  const recentJobs = allJobs.filter(job => {
+    const postedDate = new Date(job.createdAt);
+    return postedDate >= cutoffDate;
+  });
+  
+  setJobs(recentJobs);
+  setJobFilters({...jobFilters, recentOnly: true});
+  
+  toast.success(`Showing newly available jobs`);
+};
+
+// Update this function to work with your data structure
+const resetJobFilters = () => {
+  setSearchTerm("");
+  setFilterLocation("");
+  setFilterJobType("");
+  setJobFilters({...jobFilters, recentOnly: false});
+  setJobs(allJobs);
+  
+  toast.success("All job filters have been reset");
+};
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -589,6 +750,765 @@ export default function StudentDashboard() {
 
   const handleCancelAvatarEdit = () => {
     setIsEditingAvatar(false)
+  }
+
+  const handleExportToPDF = async () => {
+    if (!student) return
+
+    try {
+      setIsGeneratingPDF(true)
+      toast.loading("Generating PDF resume...")
+
+      // Create a hidden div to render the PDF content
+      const pdfContainer = document.createElement("div")
+      pdfContainer.style.position = "absolute"
+      pdfContainer.style.left = "-9999px"
+      pdfContainer.style.top = "-9999px"
+      document.body.appendChild(pdfContainer)
+
+      // Create the PDF content with proper styling
+      pdfContainer.innerHTML = `
+        <div id="pdf-content" style="width: 210mm; padding: 20mm; font-family: Arial, sans-serif; color: #333;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="font-size: 24px; color: #000; margin-bottom: 5px;">${student.firstName} ${
+              student.middleName ? student.middleName + " " : ""
+            }${student.lastName} - Resume</h1>
+            <p style="color: #666; font-size: 14px;">Generated on ${new Date().toLocaleDateString()}</p>
+          </div>
+
+          <!-- Personal Information Section -->
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Personal Information</h2>
+            <div style="display: flex; flex-wrap: wrap;">
+              <div style="width: 50%; margin-bottom: 10px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Full Name</p>
+                <p style="font-size: 16px; margin-top: 0;">${student.salutation ? student.salutation + " " : ""}${
+                  student.firstName
+                } ${student.middleName ? student.middleName + " " : ""}${student.lastName}</p>
+              </div>
+              <div style="width: 50%; margin-bottom: 10px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Gender</p>
+                <p style="font-size: 16px; margin-top: 0;">${student.gender || "Not specified"}</p>
+              </div>
+              <div style="width: 50%; margin-bottom: 10px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Date of Birth</p>
+                <p style="font-size: 16px; margin-top: 0;">${formatDate(student.dob)}</p>
+              </div>
+              ${
+                student.pincode
+                  ? `
+              <div style="width: 50%; margin-bottom: 10px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Pincode</p>
+                <p style="font-size: 16px; margin-top: 0;">${student.pincode}</p>
+              </div>
+              `
+                  : ""
+              }
+            </div>
+          </div>
+
+          <!-- Contact Information Section -->
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Contact Information</h2>
+            <div style="display: flex; flex-wrap: wrap;">
+              <div style="width: 50%; margin-bottom: 10px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Email</p>
+                <p style="font-size: 16px; margin-top: 0;">${student.email}</p>
+              </div>
+              <div style="width: 50%; margin-bottom: 10px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Phone</p>
+                <p style="font-size: 16px; margin-top: 0;">${student.phone || "Not provided"}</p>
+              </div>
+              ${
+                student.alternativePhone
+                  ? `
+              <div style="width: 50%; margin-bottom: 10px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Alternative Phone</p>
+                <p style="font-size: 16px; margin-top: 0;">${student.alternativePhone}</p>
+              </div>
+              `
+                  : ""
+              }
+              <div style="width: 50%; margin-bottom: 10px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Current Location</p>
+                <p style="font-size: 16px; margin-top: 0;">${
+                  student.currentCity && student.currentState
+                    ? `${student.currentCity}, ${student.currentState}`
+                    : "Not provided"
+                }</p>
+              </div>
+              ${
+                student.permanentAddress
+                  ? `
+              <div style="width: 100%; margin-bottom: 10px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Permanent Address</p>
+                <p style="font-size: 16px; margin-top: 0;">${student.permanentAddress}</p>
+              </div>
+              `
+                  : ""
+              }
+            </div>
+
+            <!-- Online Presence -->
+            ${
+              student.onlinePresence?.linkedin ||
+              student.linkedIn ||
+              student.onlinePresence?.portfolio ||
+              student.portfolioLink ||
+              student.onlinePresence?.github ||
+              student.onlinePresence?.socialMedia ||
+              student.socialMediaLink
+                ? `
+            <div style="margin-top: 10px;">
+              <h3 style="font-size: 16px; color: #4b5563; margin-bottom: 8px;">Online Presence</h3>
+              <div style="display: flex; flex-wrap: wrap;">
+                ${
+                  student.onlinePresence?.linkedin || student.linkedIn
+                    ? `
+                <div style="width: 50%; margin-bottom: 10px;">
+                  <p style="font-size: 14px; color: #666; margin-bottom: 2px;">LinkedIn</p>
+                  <p style="font-size: 16px; margin-top: 0; color: #2563eb;">${
+                    student.onlinePresence?.linkedin || student.linkedIn
+                  }</p>
+                </div>
+                `
+                    : ""
+                }
+                ${
+                  student.onlinePresence?.portfolio || student.portfolioLink
+                    ? `
+                <div style="width: 50%; margin-bottom: 10px;">
+                  <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Portfolio</p>
+                  <p style="font-size: 16px; margin-top: 0; color: #2563eb;">${
+                    student.onlinePresence?.portfolio || student.portfolioLink
+                  }</p>
+                </div>
+                `
+                    : ""
+                }
+                ${
+                  student.onlinePresence?.github
+                    ? `
+                <div style="width: 50%; margin-bottom: 10px;">
+                  <p style="font-size: 14px; color: #666; margin-bottom: 2px;">GitHub</p>
+                  <p style="font-size: 16px; margin-top: 0; color: #2563eb;">${student.onlinePresence.github}</p>
+                </div>
+                `
+                    : ""
+                }
+                ${
+                  student.onlinePresence?.socialMedia || student.socialMediaLink
+                    ? `
+                <div style="width: 50%; margin-bottom: 10px;">
+                  <p style="font-size: 14px; color: #666; margin-bottom: 2px;">Social Media</p>
+                  <p style="font-size: 16px; margin-top: 0; color: #2563eb;">${
+                    student.onlinePresence?.socialMedia || student.socialMediaLink
+                  }</p>
+                </div>
+                `
+                    : ""
+                }
+              </div>
+            </div>
+            `
+                : ""
+            }
+          </div>
+
+          <!-- Profile Summary Section -->
+          ${
+            student.profileOutline
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Profile Summary</h2>
+            <p style="font-size: 16px; line-height: 1.5; white-space: pre-line;">${student.profileOutline}</p>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Skills Section -->
+          ${
+            student.skills && student.skills.length > 0
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Skills</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              ${student.skills
+                .map(
+                  (skill) =>
+                    `<span style="display: inline-block; background-color: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; padding: 4px 8px; font-size: 14px;">${skill}</span>`,
+                )
+                .join("")}
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Professional Experience Summary Section -->
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Professional Experience Summary</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+              <div style="background-color: #eff6ff; border-radius: 6px; padding: 15px; text-align: center; flex: 1;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Experience</p>
+                <p style="font-size: 18px; font-weight: bold; color: #2563eb; margin: 0;">${getTotalExperience(
+                  student,
+                )}</p>
+              </div>
+              ${
+                student.currentSalary || (student.experience && student.experience[0]?.currentSalary)
+                  ? `
+              <div style="background-color: #ecfdf5; border-radius: 6px; padding: 15px; text-align: center; flex: 1;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 5px;">Current Salary</p>
+                <p style="font-size: 18px; font-weight: bold; color: #059669; margin: 0;">${
+                  student.currentSalary || student.experience?.[0]?.currentSalary || "Not specified"
+                }</p>
+              </div>
+              `
+                  : ""
+              }
+              ${
+                student.expectedSalary || (student.experience && student.experience[0]?.expectedSalary)
+                  ? `
+              <div style="background-color: #f5f3ff; border-radius: 6px; padding: 15px; text-align: center; flex: 1;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 5px;">Expected Salary</p>
+                <p style="font-size: 18px; font-weight: bold; color: #7c3aed; margin: 0;">${
+                  student.expectedSalary || student.experience?.[0]?.expectedSalary || "Not specified"
+                }</p>
+              </div>
+              `
+                  : ""
+              }
+              ${
+                student.noticePeriod || (student.experience && student.experience[0]?.noticePeriod)
+                  ? `
+              <div style="background-color: #fffbeb; border-radius: 6px; padding: 15px; text-align: center; flex: 1;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 5px;">Notice Period</p>
+                <p style="font-size: 18px; font-weight: bold; color: #d97706; margin: 0;">${
+                  student.noticePeriod || student.experience?.[0]?.noticePeriod || "Not specified"
+                }</p>
+              </div>
+              `
+                  : ""
+              }
+            </div>
+          </div>
+
+          <!-- Shift Preference Section -->
+          ${
+            student.shiftPreference ||
+            (student.settings?.shiftPreference && student.settings.shiftPreference !== "flexible")
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Shift Preference</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              ${
+                Array.isArray(student.shiftPreference)
+                  ? student.shiftPreference
+                      .map(
+                        (shift) =>
+                          `<span style="display: inline-block; background-color: #dbeafe; border: 1px solid #bfdbfe; border-radius: 4px; padding: 4px 8px; font-size: 14px; color: #1e40af;">${shift}</span>`,
+                      )
+                      .join("")
+                  : `<span style="display: inline-block; background-color: #dbeafe; border: 1px solid #bfdbfe; border-radius: 4px; padding: 4px 8px; font-size: 14px; color: #1e40af;">${
+                      student.shiftPreference || student.settings?.shiftPreference || "Flexible"
+                    }</span>`
+              }
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Preferred Cities Section -->
+          ${
+            student.preferenceCities && student.preferenceCities.length > 0
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Preferred Cities</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              ${student.preferenceCities
+                .slice(0, 5)
+                .map(
+                  (city) =>
+                    `<span style="display: inline-block; background-color: #d1fae5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 4px 8px; font-size: 14px; color: #065f46;">${city}</span>`,
+                )
+                .join("")}
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Education Section -->
+          ${
+            student.education && student.education.length > 0
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Education</h2>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+              ${student.education
+                .map(
+                  (edu) => `
+                <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <h3 style="font-size: 16px; margin: 0;">Degree/Course: ${edu.degree || "Not specified"}</h3>
+                    <span style="background-color: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; padding: 2px 6px; font-size: 14px;">%age/CGPA: ${
+                      edu.percentage || edu.grade || "Not specified"
+                    }</span>
+                  </div>
+                  <p style="font-size: 15px; color: #4b5563; margin: 5px 0;">School/College/Univ.: ${
+                    edu.institution || edu.school || "Not specified"
+                  }</p>
+                  ${
+                    edu.field
+                      ? `<p style="font-size: 15px; color: #4b5563; margin: 5px 0;">Field of Study: ${edu.field}</p>`
+                      : ""
+                  }
+                  <p style="font-size: 14px; color: #6b7280; margin: 5px 0;">
+                    <span style="margin-right: 5px;">📅</span>
+                    ${edu.startingYear || "Not provided"} - ${edu.endingYear || "Present"}
+                  </p>
+                  ${
+                    edu.level || edu.mode
+                      ? `
+                  <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 14px;">
+                    ${
+                      edu.level
+                        ? `
+                    <div>
+                      <span style="color: #6b7280;">Level: </span>
+                      <span>${edu.level}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      edu.mode
+                        ? `
+                    <div>
+                      <span style="color: #6b7280;">Mode: </span>
+                      <span>${edu.mode}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                  </div>
+                  `
+                      : ""
+                  }
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Work Experience Section -->
+          ${
+            student.experience && student.experience.length > 0
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">
+              Work Experience
+              <span style="display: inline-block; background-color: #dbeafe; border: 1px solid #bfdbfe; border-radius: 4px; padding: 2px 6px; font-size: 14px; color: #1e40af; margin-left: 10px;">Total: ${getTotalExperience(
+                student,
+              )}</span>
+            </h2>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+              ${student.experience
+                .map(
+                  (exp) => `
+                <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <h3 style="font-size: 16px; margin: 0;">Title: ${exp.title || "Not specified"}</h3>
+                    ${
+                      exp.currentlyWorking
+                        ? `<span style="background-color: #d1fae5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 2px 6px; font-size: 14px; color: #065f46;">Current</span>`
+                        : ""
+                    }
+                  </div>
+                  <p style="font-size: 15px; color: #4b5563; margin: 5px 0;">Company: ${
+                    exp.companyName || "Not specified"
+                  }</p>
+                  ${exp.department ? `<p style="font-size: 15px; margin: 5px 0;">Department: ${exp.department}</p>` : ""}
+                  ${
+                    exp.location ? `<p style="font-size: 14px; color: #6b7280; margin: 5px 0;">${exp.location}</p>` : ""
+                  }
+                  ${
+                    exp.tenure
+                      ? `
+                  <p style="font-size: 14px; color: #6b7280; margin: 5px 0;">
+                    <span style="margin-right: 5px;">⏱️</span>
+                    Tenure: ${exp.tenure}
+                  </p>
+                  `
+                      : ""
+                  }
+                  ${
+                    exp.professionalSummary || exp.summary
+                      ? `
+                  <p style="font-size: 14px; margin: 10px 0; white-space: pre-line;">
+                    <strong>Professional Summary:</strong> ${exp.professionalSummary || exp.summary}
+                  </p>
+                  `
+                      : ""
+                  }
+                  <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px; font-size: 14px;">
+                    ${
+                      exp.currentSalary
+                        ? `
+                    <div style="display: flex; align-items: center;">
+                      <span style="color: #6b7280; margin-right: 5px;">💰 Current:</span>
+                      <span>${exp.currentSalary}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      exp.expectedSalary
+                        ? `
+                    <div style="display: flex; align-items: center;">
+                      <span style="color: #6b7280; margin-right: 5px;">💰 Expected:</span>
+                      <span>${exp.expectedSalary}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      exp.noticePeriod
+                        ? `
+                    <div style="display: flex; align-items: center;">
+                      <span style="color: #6b7280; margin-right: 5px;">⏱️ Notice Period:</span>
+                      <span>${exp.noticePeriod}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                  </div>
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Certifications Section -->
+          ${
+            student.certifications && Array.isArray(student.certifications) && student.certifications.length > 0
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Certifications</h2>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              ${getCertificationNames(student)
+                .map(
+                  (cert) => `
+                <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px;">
+                  <h3 style="font-size: 16px; margin: 0;">${cert}</h3>
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Available Assets Section -->
+          ${
+            getAvailableAssets(student).length > 0
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Available Assets</h2>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${getAvailableAssets(student)
+                .map(
+                  (asset) => `
+                <div style="display: flex; align-items: center;">
+                  <span style="margin-right: 8px; color: #6b7280;">✓</span>
+                  <span>${asset.replace(/_/g, " ")}</span>
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Identity Documents Section -->
+          ${
+            getIdentityDocuments(student).length > 0
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Identity Documents</h2>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${getIdentityDocuments(student)
+                .map(
+                  (doc) => `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div style="display: flex; align-items: center;">
+                    <span style="margin-right: 8px; color: #6b7280;">📄</span>
+                    <span>${doc.replace(/_/g, " ")}</span>
+                  </div>
+                  <span style="background-color: #d1fae5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 2px 6px; font-size: 14px; color: #065f46;">Verified</span>
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Cover Letter Section -->
+          ${
+            student.coverLetter
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Cover Letter</h2>
+            <div style="background-color: #f9fafb; border-radius: 6px; padding: 15px;">
+              <p style="font-size: 15px; line-height: 1.5; white-space: pre-line;">${student.coverLetter}</p>
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Additional Information Section -->
+          ${
+            student.additionalInfo
+              ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Additional Information</h2>
+            <p style="font-size: 15px; line-height: 1.5; white-space: pre-line;">${student.additionalInfo}</p>
+          </div>
+          `
+              : ""
+          }
+
+          <!-- Documents Section -->
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 18px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;">Documents</h2>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center;">
+                  <span style="margin-right: 8px; color: #6b7280;">📄</span>
+                  <span>Resume</span>
+                </div>
+                ${
+                  student.documents?.resume?.url
+                    ? `<span style="color: #2563eb;">${student.documents.resume.url}</span>`
+                    : `<span style="background-color: #fee2e2; border: 1px solid #fecaca; border-radius: 4px; padding: 2px 6px; font-size: 14px; color: #b91c1c;">Not uploaded</span>`
+                }
+              </div>
+
+              ${
+                student.documents?.videoResume?.url
+                  ? `
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center;">
+                  <span style="margin-right: 8px; color: #6b7280;">🎥</span>
+                  <span>Video Resume</span>
+                </div>
+                <span style="color: #2563eb;">${student.documents.videoResume.url}</span>
+              </div>
+              `
+                  : ""
+              }
+
+              ${
+                student.documents?.audioBiodata?.url
+                  ? `
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center;">
+                  <span style="margin-right: 8px; color: #6b7280;">🎵</span>
+                  <span>Audio Bio</span>
+                </div>
+                <span style="color: #2563eb;">${student.documents.audioBiodata.url}</span>
+              </div>
+              `
+                  : ""
+              }
+
+              ${
+                student.documents?.photograph?.url
+                  ? `
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center;">
+                  <span style="margin-right: 8px; color: #6b7280;">🖼️</span>
+                  <span>Photograph</span>
+                </div>
+                <span style="color: #2563eb;">${student.documents.photograph.url}</span>
+              </div>
+              `
+                  : ""
+              }
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #6b7280;">
+            <p>This document was generated from the student profile on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+            <p>© ${new Date().getFullYear()} Student Profile System - All Rights Reserved</p>
+          </div>
+        </div>
+      `
+
+      // Wait for the content to render
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      // Get the content element
+      const content = document.getElementById("pdf-content")
+      if (!content) {
+        throw new Error("PDF content element not found")
+      }
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      })
+
+      // Capture the content as an image
+      const canvas = await html2canvas(content, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+      })
+
+      // Add the image to the PDF
+      const imgData = canvas.toDataURL("image/jpeg", 1.0)
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = pdf.internal.pageSize.getHeight()
+      const imgWidth = pdfWidth
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      // If the image is taller than the page, split it into multiple pages
+      let heightLeft = imgHeight
+      let position = 0
+      let pageCount = 1
+
+      // Add first page
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight)
+      heightLeft -= pdfHeight
+
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        position = -pdfHeight * pageCount
+        pageCount++
+        pdf.addPage()
+        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight)
+        heightLeft -= pdfHeight
+      }
+
+      // Save the PDF
+      pdf.save(`${student.firstName}_${student.lastName}_Resume.pdf`)
+
+      // Clean up
+      document.body.removeChild(pdfContainer)
+
+      toast.dismiss()
+      toast.success("PDF resume generated successfully")
+    } catch (error) {
+      console.error("Error generating PDF:", error)
+      toast.dismiss()
+      toast.error("Failed to generate PDF resume")
+    } finally {
+      setIsGeneratingPDF(false)
+    }
+  }
+
+  // Helper function to get certification names
+  const getCertificationNames = (student: StudentData) => {
+    if (!student.certifications || student.certifications.length === 0) {
+      return []
+    }
+
+    // If certifications is an array of strings, return it directly
+    if (typeof student.certifications[0] === "string") {
+      return student.certifications as string[]
+    }
+
+    // If certifications is an array of objects, extract the name property
+    return (student.certifications as Array<{ name: string }>).map((cert) => cert.name)
+  }
+
+  // Get available assets as array
+  const getAvailableAssets = (student: StudentData) => {
+    if (student.availableAssets && student.availableAssets.length > 0) {
+      return student.availableAssets
+    }
+
+    if (student.assets) {
+      const assets: string[] = []
+      if (student.assets.bike) assets.push("Bike / Car")
+      if (student.assets.wifi) assets.push("WiFi")
+      if (student.assets.laptop) assets.push("Laptop")
+      return assets
+    }
+
+    return []
+  }
+
+  // Get identity documents as array
+  const getIdentityDocuments = (student: StudentData) => {
+    if (student.identityDocuments && student.identityDocuments.length > 0) {
+      return student.identityDocuments
+    }
+
+    if (student.assets) {
+      const documents: string[] = []
+      if (student.assets.panCard) documents.push("PAN Card")
+      if (student.assets.aadhar) documents.push("Aadhar")
+      if (student.assets.bankAccount) documents.push("Bank Account")
+      if (student.assets.idProof) documents.push("Voter ID / Passport / DL (Any)")
+      return documents
+    }
+
+    return []
+  }
+
+  // Get total experience - FIXED to properly display total experience
+  const getTotalExperienceOriginal = (student: StudentData) => {
+    // First check direct properties
+    if (student.totalExperience) return student.totalExperience
+    if (student.yearsOfExperience) return student.yearsOfExperience
+
+    // Calculate from experience array if available
+    if (student.experience && student.experience.length > 0) {
+      // First check if any experience entry has totalExperience
+      for (const exp of student.experience) {
+        if (exp.totalExperience) return exp.totalExperience
+      }
+
+      // Then try to calculate from tenure
+      let totalYears = 0
+      student.experience.forEach((exp) => {
+        if (exp.tenure) {
+          const yearMatch = exp.tenure.match(/(\d+)\s*years?/i)
+          if (yearMatch && yearMatch[1]) {
+            totalYears += Number.parseInt(yearMatch[1], 10)
+          }
+        }
+      })
+
+      if (totalYears > 0) return `${totalYears} years`
+    }
+
+    return "Not specified"
   }
 
   const handleSaveSettings = async () => {
@@ -765,86 +1685,6 @@ export default function StudentDashboard() {
     return url.startsWith("http") ? url : `https://${url}`
   }
 
-  // Get available assets as array
-  const getAvailableAssets = (student: StudentData) => {
-    if (student.availableAssets && student.availableAssets.length > 0) {
-      return student.availableAssets
-    }
-
-    if (student.assets) {
-      const assets: string[] = []
-      if (student.assets.bike) assets.push("Bike / Car")
-      if (student.assets.wifi) assets.push("WiFi")
-      if (student.assets.laptop) assets.push("Laptop")
-      return assets
-    }
-
-    return []
-  }
-
-  // Get identity documents as array
-  const getIdentityDocuments = (student: StudentData) => {
-    if (student.identityDocuments && student.identityDocuments.length > 0) {
-      return student.identityDocuments
-    }
-
-    if (student.assets) {
-      const documents: string[] = []
-      if (student.assets.panCard) documents.push("PAN Card")
-      if (student.assets.aadhar) documents.push("Aadhar")
-      if (student.assets.bankAccount) documents.push("Bank Account")
-      if (student.assets.idProof) documents.push("Voter ID / Passport / DL (Any)")
-      return documents
-    }
-
-    return []
-  }
-
-  // Get total experience - FIXED to properly display total experience
-  const getTotalExperienceOriginal = (student: StudentData) => {
-    // First check direct properties
-    if (student.totalExperience) return student.totalExperience
-    if (student.yearsOfExperience) return student.yearsOfExperience
-
-    // Calculate from experience array if available
-    if (student.experience && student.experience.length > 0) {
-      // First check if any experience entry has totalExperience
-      for (const exp of student.experience) {
-        if (exp.totalExperience) return exp.totalExperience
-      }
-
-      // Then try to calculate from tenure
-      let totalYears = 0
-      student.experience.forEach((exp) => {
-        if (exp.tenure) {
-          const yearMatch = exp.tenure.match(/(\d+)\s*years?/i)
-          if (yearMatch && yearMatch[1]) {
-            totalYears += Number.parseInt(yearMatch[1], 10)
-          }
-        }
-      })
-
-      if (totalYears > 0) return `${totalYears} years`
-    }
-
-    return "Not specified"
-  }
-
-  // Helper function to get certification names
-  const getCertificationNames = (student: StudentData) => {
-    if (!student.certifications || student.certifications.length === 0) {
-      return []
-    }
-
-    // If certifications is an array of strings, return it directly
-    if (typeof student.certifications[0] === "string") {
-      return student.certifications as string[]
-    }
-
-    // If certifications is an array of objects, extract the name property
-    return (student.certifications as Array<{ name: string }>).map((cert) => cert.name)
-  }
-
   // Reset all application filters
   const resetApplicationFilters = () => {
     setApplicationSearchTerm("")
@@ -856,7 +1696,138 @@ export default function StudentDashboard() {
     setApplicationDateFrom("")
     setApplicationDateTo("")
     setShowAdvancedFilters(false)
+    setShowRecentApplicationsOnly(false)
   }
+
+  const handleSaveAlternativeEmail = async () => {
+    if (!alternativeEmail) return
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(alternativeEmail)) {
+      setAlternativeEmailError("Please enter a valid email address")
+      return
+    }
+
+    // Check if same as primary email
+    if (student && student.email === alternativeEmail) {
+      setAlternativeEmailError("Alternative email cannot be the same as your primary email")
+      return
+    }
+
+    setAlternativeEmailError("")
+    setIsUpdatingAlternativeEmail(true)
+
+    try {
+      const response = await fetch("/api/student/alternative-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ alternativeEmail }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to save alternative email")
+      }
+
+      setCurrentAlternativeEmail(alternativeEmail)
+      setAlternativeEmail("")
+      toast.success("Alternative email saved successfully")
+    } catch (error) {
+      console.error("Error saving alternative email:", error)
+      setAlternativeEmailError(error instanceof Error ? error.message : "Failed to save alternative email")
+      toast.error(error instanceof Error ? error.message : "Failed to save alternative email")
+    } finally {
+      setIsUpdatingAlternativeEmail(false)
+    }
+  }
+
+  const handleRemoveAlternativeEmail = async () => {
+    if (!currentAlternativeEmail) return
+
+    if (
+      !confirm(
+        "Are you sure you want to remove your alternative email? You will no longer be able to use it to sign in.",
+      )
+    ) {
+      return
+    }
+
+    setIsRemovingAlternativeEmail(true)
+
+    try {
+      const response = await fetch("/api/student/alternative-email", {
+        method: "DELETE",
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to remove alternative email")
+      }
+
+      setCurrentAlternativeEmail("")
+      toast.success("Alternative email removed successfully")
+    } catch (error) {
+      console.error("Error removing alternative email:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to remove alternative email")
+    } finally {
+      setIsRemovingAlternativeEmail(false)
+    }
+  }
+
+  const handleSavePrimaryEmail = async () => {
+    if (!primaryEmail) return
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(primaryEmail)) {
+      setPrimaryEmailError("Please enter a valid email address")
+      return
+    }
+
+    // Check if same as alternative email
+    if (currentAlternativeEmail && primaryEmail === currentAlternativeEmail) {
+      setPrimaryEmailError("Primary email cannot be the same as your alternative email")
+      return
+    }
+
+    setPrimaryEmailError("")
+    setIsUpdatingPrimaryEmail(true)
+
+    try {
+      const response = await fetch("/api/student/primary-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ primaryEmail }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to save primary email")
+      }
+
+      // Update student state with new email
+      setStudent((prev) => (prev ? { ...prev, email: primaryEmail } : prev))
+      toast.success("Primary email updated successfully")
+    } catch (error) {
+      console.error("Error saving primary email:", error)
+      setPrimaryEmailError(error instanceof Error ? error.message : "Failed to save primary email")
+      toast.error(error instanceof Error ? error.message : "Failed to save primary email")
+    } finally {
+      setIsUpdatingPrimaryEmail(false)
+    }
+  }
+
+  useEffect(() => {
+    if (student) {
+      setPrimaryEmail(student.email || "")
+    }
+  }, [student])
 
   if (isLoading) {
     return (
@@ -913,21 +1884,126 @@ export default function StudentDashboard() {
     <div className="min-h-screen bg-gray-50">
       <Toaster position="top-center" />
 
-      {/* Header */}
-      <header className="bg-black shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-semibold text-white">Student Dashboard</h1>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-white">
-              Welcome, {student.firstName} {student.lastName}
-            </span>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+     <header className="bg-black shadow">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+    <div className="flex items-center gap-4">
+      <h1 className="text-xl font-semibold text-white">Student Dashboard</h1>
+      
+      {/* Search Bar - RIGHT NEXT TO Student Dashboard text */}
+      <div className="relative w-64">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+        <Input
+          placeholder="Search Dashboard..."
+          className="pl-10 h-9 bg-white text-black w-full"
+          value={globalSearch}
+          onChange={(e) => handleSearchInput(e.target.value)}
+        />
+        
+ {/* Search Results Dropdown */}
+{globalSearch.length > 0 && (
+  <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg p-3">
+    <div className="flex items-start">
+      <AlertCircle className="h-4 w-4 mr-2 text-gray-500 mt-0.5" />
+      <p className="text-sm">
+        Found {searchResults.jobs.length} jobs and {searchResults.applications.length} applications matching "{globalSearch}"
+      </p>
+    </div>
+    
+    {/* Jobs section */}
+    {searchResults.jobs.length > 0 && (
+      <div className="mt-2">
+        <p className="text-xs font-medium text-gray-500 mb-1">Jobs</p>
+        {searchResults.jobs.slice(0, 3).map(job => (
+          <div 
+            key={job._id}
+            className="px-2 py-1 hover:bg-gray-100 rounded cursor-pointer text-sm"
+            onClick={() => handleSearchResultClick("job", job._id)}
+          >
+            <div className="flex items-center">
+              <Briefcase className="h-3 w-3 mr-2 text-blue-500" />
+              <span>{job.jobTitle} - {job.companyName}</span>
+            </div>
+          </div>
+        ))}
+        {searchResults.jobs.length > 3 && (
+          <div 
+            className="px-2 py-1 text-xs text-blue-600 hover:underline cursor-pointer"
+            onClick={() => handleSearchResultClick("jobs")}
+          >
+            View all {searchResults.jobs.length} jobs
+          </div>
+        )}
+      </div>
+    )}
+    
+    {/* Applications section */}
+    {searchResults.applications.length > 0 && (
+      <div className="mt-2">
+        <p className="text-xs font-medium text-gray-500 mb-1">Applications</p>
+        {searchResults.applications.slice(0, 3).map(app => (
+          <div 
+            key={app._id}
+            className="px-2 py-1 hover:bg-gray-100 rounded cursor-pointer text-sm"
+            onClick={() => handleSearchResultClick("application", app._id)}
+          >
+            <div className="flex items-center">
+              <FileText className="h-3 w-3 mr-2 text-green-500" />
+              <span>{app.job?.jobTitle || 'Unknown Job'} ({app.status})</span>
+            </div>
+          </div>
+        ))}
+        {searchResults.applications.length > 3 && (
+          <div 
+            className="px-2 py-1 text-xs text-blue-600 hover:underline cursor-pointer"
+            onClick={() => handleSearchResultClick("applications")}
+          >
+            View all {searchResults.applications.length} applications
+          </div>
+        )}
+      </div>
+    )}
+    
+    {/* Quick links section */}
+    <div className="mt-2 border-t pt-2">
+      <p className="text-xs font-medium text-gray-500 mb-1">Quick Links</p>
+      <div className="grid grid-cols-2 gap-1">
+        <div 
+          className="px-2 py-1 hover:bg-gray-100 rounded cursor-pointer text-sm"
+          onClick={() => handleSearchResultClick("profile")}
+        >
+          <div className="flex items-center">
+            <User className="h-3 w-3 mr-2 text-purple-500" />
+            <span>My Profile</span>
           </div>
         </div>
-      </header>
+        <div 
+          className="px-2 py-1 hover:bg-gray-100 rounded cursor-pointer text-sm"
+          onClick={() => handleSearchResultClick("settings")}
+        >
+          <div className="flex items-center">
+            <Settings className="h-3 w-3 mr-2 text-gray-500" />
+            <span>Settings</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+</div>
+</div>
+    
+    
+    <div className="flex items-center space-x-4">
+      <span className="text-sm text-white">
+        Welcome, {student.firstName} {student.lastName}
+      </span>
+      <Button variant="outline" size="sm" onClick={handleLogout} className="bg-transparent text-white border-white hover:bg-white hover:text-black">
+        <LogOut className="h-4 w-4 mr-2" />
+        Logout
+      </Button>
+    </div>
+  </div>
+</header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1062,6 +2138,24 @@ export default function StudentDashboard() {
                           <option value="Remote">Remote</option>
                         </select>
                       </div>
+                      <Button 
+  variant={jobFilters.recentOnly ? "default" : "outline"} 
+  className="whitespace-nowrap"
+  onClick={() => filterRecentJobs(7)}
+>
+  <Clock className="h-4 w-4 mr-2" />
+New Job Openings
+</Button>
+  
+  {/* Reset Button */}
+  <Button 
+    variant="ghost" 
+    onClick={resetJobFilters}
+    className="whitespace-nowrap bg-red-600 text-white hover:bg-red-900 hover:text-white"
+  >
+    <RefreshCw className="h-4 w-4 mr-2" />
+    Reset
+  </Button>
                     </div>
                   </div>
                 </div>
@@ -1173,6 +2267,14 @@ export default function StudentDashboard() {
                         onChange={(e) => setApplicationSearchTerm(e.target.value)}
                       />
                     </div>
+                    <Button 
+  variant={showRecentApplicationsOnly ? "default" : "outline"}
+  onClick={() => setShowRecentApplicationsOnly(!showRecentApplicationsOnly)}
+  className="whitespace-nowrap"
+>
+  <Clock className="h-4 w-4 mr-2" />
+  {showRecentApplicationsOnly ? "All Applications" : "Recent Applications"}
+</Button>
                     <div className="flex gap-4">
                       <div className="relative w-full md:w-40">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
@@ -1335,7 +2437,7 @@ export default function StudentDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {filteredApplications.map((application) => (
+                   {filterRecentApplications(filteredApplications).map((application) => (
                       <Card key={application._id} className="overflow-hidden hover:shadow-md transition-shadow">
                         <CardContent className="p-6">
                           <div className="flex justify-between items-start">
@@ -1396,6 +2498,9 @@ export default function StudentDashboard() {
                             student.avatar ||
                             student.documents?.photograph?.url ||
                             "/placeholder.svg?height=128&width=128" ||
+                            "/placeholder.svg" ||
+                            "/placeholder.svg" ||
+                            "/placeholder.svg" ||
                             "/placeholder.svg" ||
                             "/placeholder.svg"
                           }
@@ -1465,15 +2570,33 @@ export default function StudentDashboard() {
                       Edit Profile
                     </Button>
                     {student.documents?.resume?.url && (
-                      <Button variant="outline" className="w-full" asChild>
+                      <Button variant="outline" className="w-full mb-2" asChild>
                         <a href={student.documents.resume.url} target="_blank" rel="noopener noreferrer">
                           View Resume
                         </a>
                       </Button>
                     )}
+                    <Button
+                      variant="outline"
+                      className="w-full flex items-center justify-center"
+                      onClick={handleExportToPDF}
+                      disabled={isGeneratingPDF}
+                    >
+                      {isGeneratingPDF ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Generating PDF...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          Export to PDF
+                        </>
+                      )}
+                    </Button>
                   </div>
 
-                  <div className="md:w-2/3">
+                  <div className="md:w-2/3" ref={pdfContentRef}>
                     <div className="space-y-6">
                       <div>
                         <h4 className="text-sm font-medium text-gray-500 mb-1">Personal Information</h4>
@@ -1838,7 +2961,7 @@ export default function StudentDashboard() {
                         </>
                       )}
 
-                      {/* Certifications Section - FIXED to display only certification names */}
+                      {/* Certifications Section */}
                       {student.certifications && (
                         <>
                           <Separator />
@@ -2137,6 +3260,96 @@ export default function StudentDashboard() {
 
                   <Separator />
 
+                 <div>
+                    <h3 className="text-lg font-medium mb-4">Email Settings</h3>
+                    <div className="space-y-4">
+                      {/* Primary Email */}
+                      <div className="border rounded-md p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <Label htmlFor="primary-email" className="text-sm font-medium">
+                            Primary Email
+                          </Label>
+                          {isUpdatingPrimaryEmail ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Button variant="outline" size="sm" onClick={handleSavePrimaryEmail}>
+                              Save
+                            </Button>
+                          )}
+                        </div>
+                        <Input
+                          id="primary-email"
+                          type="email"
+                          placeholder="Primary Email"
+                          value={primaryEmail}
+                          onChange={(e) => setPrimaryEmail(e.target.value)}
+                          disabled={isUpdatingPrimaryEmail}
+                        />
+                        {primaryEmailError && <p className="text-red-500 text-sm mt-1">{primaryEmailError}</p>}
+                      </div>
+
+                      {/* Alternative Email */}
+                      <div className="border rounded-md p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <Label htmlFor="alternative-email" className="text-sm font-medium">
+                            Alternative Email
+                          </Label>
+                          {currentAlternativeEmail ? (
+                            isRemovingAlternativeEmail ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Button variant="destructive" size="sm" onClick={handleRemoveAlternativeEmail}>
+                                Remove
+                              </Button>
+                            )
+                          ) : isUpdatingAlternativeEmail ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Button variant="outline" size="sm" onClick={handleSaveAlternativeEmail}>
+                              Save
+                            </Button>
+                          )}
+                        </div>
+                        {currentAlternativeEmail && (
+                          <div className="p-3 bg-gray-50 rounded-md border mb-3">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm text-gray-500">Current Alternative Email:</p>
+                                <p className="font-medium">{currentAlternativeEmail}</p>
+                              </div>
+                              <Badge variant="outline" className="bg-green-50 text-green-800">
+                                Active
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+                        {currentAlternativeEmail ? (
+                          <div className="flex items-center justify-between">
+                            <p className="text-gray-500">Current Alternative Email:</p>
+                            <p className="font-medium">{currentAlternativeEmail}</p>
+                          </div>
+                        ) : (
+                          <>
+                            <Input
+                              id="alternative-email"
+                              type="email"
+                              placeholder="Alternative Email"
+                              value={alternativeEmail}
+                              onChange={(e) => setAlternativeEmail(e.target.value)}
+                              disabled={isUpdatingAlternativeEmail}
+                            />
+                            {alternativeEmailError && (
+                              <p className="text-red-500 text-sm mt-1">{alternativeEmailError}</p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+
+                  <Separator />
+
                   <div>
                     <h3 className="text-lg font-medium mb-4">Security</h3>
                     <div className="space-y-4">
@@ -2178,26 +3391,6 @@ export default function StudentDashboard() {
                       </Button>
                     </div>
                   </div>
-
-                  <div className="flex justify-end pt-4">
-                    <Button
-                      onClick={handleSaveSettings}
-                      disabled={isUpdatingSettings}
-                      className="flex items-center gap-2"
-                    >
-                      {isUpdatingSettings ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4" />
-                          Save Settings
-                        </>
-                      )}
-                    </Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -2207,3 +3400,5 @@ export default function StudentDashboard() {
     </div>
   )
 }
+
+export default StudentDashboardPage

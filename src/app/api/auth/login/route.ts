@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, message: "Invalid credentials" }, { status: 401 })
       }
 
-      // Generate token
-      const token = generateToken(admin._id.toString())
+      // Generate token with userType
+      const token = generateToken(admin._id.toString(), "admin")
 
       // Create response with cookie
       const response = NextResponse.json(
@@ -65,7 +65,17 @@ export async function POST(request: NextRequest) {
     }
 
     const collection = userType === "employee" ? "employees" : "students"
-    const user = await db.collection(collection).findOne({ email })
+
+    // Check for login with primary or alternative email for students
+    let user = null
+    if (userType === "student") {
+      user = await db.collection(collection).findOne({
+        $or: [{ email: email }, { alternativeEmail: email }],
+      })
+    } else {
+      // For employees, only check primary email
+      user = await db.collection(collection).findOne({ email })
+    }
 
     if (!user) {
       return NextResponse.json({ success: false, message: "Invalid credentials" }, { status: 401 })
@@ -112,7 +122,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: "Invalid credentials" }, { status: 401 })
     }
 
-    const token = generateToken(user._id.toString())
+    // Generate token with userType
+    const token = generateToken(user._id.toString(), userType)
 
     // Create response with cookie and redirect URL
     const redirectUrl = userType === "employee" ? "/employee/dashboard" : "/student/dashboard"

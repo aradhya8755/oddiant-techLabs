@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, message: "Student not found" }, { status: 404 })
     }
 
-    // Find all job applications for this student
+    // Find all job applications for this student only
     const applications = await db
       .collection("job_applications")
       .find({ candidateId: new ObjectId(userId) })
@@ -124,6 +124,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: "You have already applied to this job" }, { status: 400 })
     }
 
+    // Get student data to include in application
+    const student = await db.collection("students").findOne({ _id: new ObjectId(userId) })
+
+    if (!student) {
+      return NextResponse.json({ success: false, message: "Student profile not found" }, { status: 404 })
+    }
+
     // Create new application
     const newApplication = {
       candidateId: new ObjectId(userId),
@@ -138,11 +145,19 @@ export async function POST(request: NextRequest) {
           note: "Application submitted",
         },
       ],
+      // Include basic student info for easier querying
+      studentName: `${student.firstName || ""} ${student.lastName || ""}`.trim() || "Unknown",
+      studentEmail: student.email || "",
+      // Include employer ID for isolation
+      employerId: job.employerId || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
 
     const result = await db.collection("job_applications").insertOne(newApplication)
+
+    // Update job with applicant count
+    await db.collection("jobs").updateOne({ _id: new ObjectId(jobId) }, { $inc: { applicants: 1 } })
 
     return NextResponse.json(
       {

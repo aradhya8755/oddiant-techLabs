@@ -1,8 +1,7 @@
 "use client"
-
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { User, Users, Briefcase, Calendar, Settings, Search } from "lucide-react"
+import { User, Users, Briefcase, Calendar, Settings, Search, ClipboardCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -32,6 +31,11 @@ const navItems = [
     icon: Search,
   },
   {
+    label: "Assessments",
+    href: "/employee/assessment/dashboard",
+    icon: ClipboardCheck,
+  },
+  {
     label: "Settings",
     href: "/employee/dashboard?tab=settings",
     icon: Settings,
@@ -41,13 +45,14 @@ const navItems = [
 export function EmployeeNavbar() {
   const pathname = usePathname()
   const currentTab = pathname.includes("/employee/dashboard") ? pathname.split("?tab=")[1] || "overview" : ""
+  const isAssessments = pathname.includes("/employee/assessment")
 
   return (
     <div className="w-full dark:bg-gray-800 shadow-sm mb-6">
       <div className="max-w-7xl mx-auto ">
         <nav className="flex overflow-x-auto ml-72 mr-72 bg-gradient-to-br from-black to-black">
           {navItems.map((item) => {
-            const isActive = item.label.toLowerCase() === currentTab
+            const isActive = item.label.toLowerCase() === currentTab || (item.label === "Assessments" && isAssessments)
 
             return (
               <Link

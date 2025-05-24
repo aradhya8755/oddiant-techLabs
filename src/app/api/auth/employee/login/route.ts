@@ -14,8 +14,10 @@ export async function POST(request: NextRequest) {
     // Connect to database
     const { db } = await connectToDatabase()
 
-    // Find employee by email
-    const employee = await db.collection("employees").findOne({ email })
+    // Find employee by primary email or alternative email
+    const employee = await db.collection("employees").findOne({
+      $or: [{ email: email }, { alternativeEmail: email }],
+    })
 
     if (!employee) {
       return NextResponse.json({ success: false, message: "Invalid email or password" }, { status: 401 })
@@ -40,7 +42,7 @@ export async function POST(request: NextRequest) {
     const token = generateToken(employee._id.toString())
 
     // Set auth cookie
-    setAuthCookie(token)
+    await setAuthCookie(token)
 
     return NextResponse.json(
       {

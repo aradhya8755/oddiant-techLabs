@@ -1,17 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { cookies as getCookies } from "next/headers" 
+import { cookies } from "next/headers"
 import { sign, verify } from "jsonwebtoken"
 import bcrypt from "bcryptjs"
 import { connectToDatabase } from "./mongodb"
 import { ObjectId } from "mongodb"
 
-const JWT_SECRET = process.env.JWT_SECRET
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 const TOKEN_EXPIRATION = "1d"
 
 // Add the auth function that was missing
 export async function auth() {
   try {
-    const cookieStore = await getCookies()
+    const cookieStore = cookies()
     const token = cookieStore.get("auth_token")?.value
 
     if (!token) {
@@ -48,24 +48,23 @@ export async function comparePassword(password: string, hashedPassword: string):
   return bcrypt.compare(password, hashedPassword)
 }
 
-// Generate JWT token
-export function generateToken(userId: string): string {
-  return sign({ userId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRATION })
+// Generate JWT token with user type
+export function generateToken(userId: string, userType = "student"): string {
+  return sign({ userId, userType }, JWT_SECRET, { expiresIn: TOKEN_EXPIRATION })
 }
 
 // Verify JWT token
-export function verifyToken(token: string): { userId: string } | null {
+export function verifyToken(token: string): { userId: string; userType: string } | null {
   try {
-    return verify(token, JWT_SECRET) as { userId: string }
+    return verify(token, JWT_SECRET) as { userId: string; userType: string }
   } catch (error) {
     return null
   }
 }
 
 // Set JWT token in cookies
-export async function setAuthCookie(token: string): Promise<void> {
-  const cookieStore = await getCookies()
-  cookieStore.set({
+export function setAuthCookie(token: string): void {
+  cookies().set({
     name: "auth_token",
     value: token,
     httpOnly: true,
@@ -77,9 +76,8 @@ export async function setAuthCookie(token: string): Promise<void> {
 }
 
 // Clear auth cookie
-export async function clearAuthCookie(): Promise<void> {
-  const cookieStore = await getCookies()
-  cookieStore.delete("auth_token")
+export function clearAuthCookie(): void {
+  cookies().delete("auth_token")
 }
 
 // Get user ID from request
@@ -90,6 +88,16 @@ export async function getUserFromRequest(req: NextRequest): Promise<string | nul
   }
   const decoded = verifyToken(token)
   return decoded?.userId || null
+}
+
+// Get user type from request
+export async function getUserTypeFromRequest(req: NextRequest): Promise<string | null> {
+  const token = req.cookies.get("auth_token")?.value
+  if (!token) {
+    return null
+  }
+  const decoded = verifyToken(token)
+  return decoded?.userType || null
 }
 
 // Auth middleware
@@ -108,10 +116,18 @@ export async function getUserById(userId: string) {
 
     // Check both collections for the user
     let user = await db.collection("students").findOne({ _id: new ObjectId(userId) })
+    let userType = "student"
 
     // If not found in students, try employees collection
     if (!user) {
       user = await db.collection("employees").findOne({ _id: new ObjectId(userId) })
+      userType = "employee"
+
+      // If not found in employees, try admins collection
+      if (!user) {
+        user = await db.collection("admins").findOne({ _id: new ObjectId(userId) })
+        userType = "admin"
+      }
     }
 
     if (!user) {
@@ -120,7 +136,7 @@ export async function getUserById(userId: string) {
 
     // Remove password from user object
     const { password, ...userWithoutPassword } = user
-    return userWithoutPassword
+    return { ...userWithoutPassword, userType }
   } catch (error) {
     console.error("Error getting user by ID:", error)
     return null

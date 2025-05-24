@@ -29,17 +29,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, message: "Job not found" }, { status: 404 })
       }
 
-      // Check if user already exists
+      // Check if user already exists in users collection
       const existingUser = await db.collection("users").findOne({ email })
 
-      // If user doesn't exist, check candidates collection
+      // If user doesn't exist in users collection, check candidates collection
       let existingCandidate = null
       if (!existingUser) {
         existingCandidate = await db.collection("candidates").findOne({ email })
       }
 
-      // If neither user nor candidate exists, return not found
-      if (!existingUser && !existingCandidate) {
+      // If user doesn't exist in users or candidates collection, check students collection
+      let existingStudent = null
+      if (!existingUser) {
+        existingStudent = await db.collection("students").findOne({ email })
+      }
+
+      // If user doesn't exist in any collection, return not found
+      if (!existingUser && !existingCandidate && !existingStudent) {
         await session.abortTransaction()
         return NextResponse.json({
           success: true,
@@ -49,12 +55,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Get candidate details
-      const candidate =
-        existingCandidate ||
-        (await db.collection("candidates").findOne({
-          userId: existingUser ? existingUser._id : null,
-          email,
-        }))
+      let candidate = existingCandidate
+      let candidateId
 
       if (!candidate) {
         // Create a new candidate record if user exists but no candidate record
@@ -76,14 +78,30 @@ export async function POST(request: NextRequest) {
           }
 
           const candidateResult = await db.collection("candidates").insertOne(newCandidate, { session })
-          var candidateId = candidateResult.insertedId
-        } else {
-          await session.abortTransaction()
-          return NextResponse.json({
-            success: true,
-            exists: false,
-            message: "No candidate profile found",
-          })
+          candidateId = candidateResult.insertedId
+          candidate = newCandidate
+        } 
+        // If student exists but no candidate record
+        else if (existingStudent) {
+          const newCandidate = {
+            name: existingStudent.firstName + " " + existingStudent.lastName,
+            firstName: existingStudent.firstName || "",
+            lastName: existingStudent.lastName || "",
+            email: existingStudent.email,
+            phone: existingStudent.phone || "",
+            status: "Applied",
+            role: job.jobTitle,
+            location: job.jobLocation || "",
+            experience: job.experienceRange || "",
+            appliedDate: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            studentId: existingStudent._id,
+          }
+
+          const candidateResult = await db.collection("candidates").insertOne(newCandidate, { session })
+          candidateId = candidateResult.insertedId
+          candidate = newCandidate
         }
       } else {
         candidateId = candidate._id
@@ -158,6 +176,7 @@ export async function POST(request: NextRequest) {
           exists: true,
           message: "Application submitted successfully",
           candidateId: candidateId.toString(),
+          source: existingStudent ? "student" : existingUser ? "user" : "candidate",
         },
         { status: 201 },
       )
@@ -169,12 +188,13 @@ export async function POST(request: NextRequest) {
       // End session
       await session.endSession()
     }
-  } catch (error: any) {
-    console.error("Error during sign-in:", error)
+  }
+  catch (error: any) {
+    console.error("Error during job application:", error)
     return NextResponse.json(
       {
         success: false,
-        message: `Sign-in failed: ${error.message || "Unknown error"}`,
+        message: `Job application failed: ${error.message || "Unknown error"}`,
       },
       { status: 500 },
     )

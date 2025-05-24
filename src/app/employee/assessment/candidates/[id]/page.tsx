@@ -1,0 +1,912 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
+import { toast, Toaster } from "sonner"
+import { ArrowLeft, Mail, CheckCircle, XCircle, AlertCircle, Download, Send } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+
+interface CandidateData {
+  _id: string
+  name: string
+  email: string
+  phone: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  testsAssigned: number
+  testsCompleted: number
+  averageScore: number
+}
+
+interface TestData {
+  _id: string
+  name: string
+  description: string
+  type: string
+  duration: number
+  passingScore: number
+}
+
+interface InvitationData {
+  _id: string
+  testId: string
+  testName: string
+  status: string
+  createdAt: string
+  expiresAt: string
+  completedAt?: string
+}
+
+interface ResultData {
+  _id: string
+  testId: string
+  testName: string
+  score: number
+  status: string
+  duration: number
+  completionDate: string
+  resultsDeclared: boolean
+  answers: {
+    questionId: string
+    answer: string | string[]
+    isCorrect: boolean
+    points: number
+  }[]
+}
+
+interface VerificationData {
+  _id: string
+  invitationId: string
+  candidateEmail: string
+  idCardImageUrl?: string
+  faceImageUrl?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export default function CandidateDetailsPage() {
+  const params = useParams()
+  const router = useRouter()
+  const candidateId = params.id as string
+
+  const [isLoading, setIsLoading] = useState(true)
+  const [candidate, setCandidate] = useState<CandidateData | null>(null)
+  const [availableTests, setAvailableTests] = useState<TestData[]>([])
+  const [invitations, setInvitations] = useState<InvitationData[]>([])
+  const [results, setResults] = useState<ResultData[]>([])
+  const [verifications, setVerifications] = useState<VerificationData[]>([])
+
+  const [showInviteDialog, setShowInviteDialog] = useState(false)
+  const [selectedTest, setSelectedTest] = useState<string | null>(null)
+  const [isSendingInvitation, setIsSendingInvitation] = useState(false)
+
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false)
+  const [selectedVerification, setSelectedVerification] = useState<VerificationData | null>(null)
+
+  useEffect(() => {
+    fetchCandidateDetails()
+    fetchAvailableTests()
+    fetchInvitations()
+    fetchResults()
+    fetchVerifications()
+  }, [candidateId])
+
+  const fetchCandidateDetails = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch(`/api/assessment/candidates/${candidateId}`, {
+        method: "GET",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch candidate details")
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        setCandidate(data.candidate)
+      } else {
+        throw new Error(data.message || "Failed to fetch candidate details")
+      }
+    } catch (error) {
+      console.error("Error fetching candidate details:", error)
+      toast.error("Failed to load candidate details. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const fetchAvailableTests = async () => {
+    try {
+      const response = await fetch("/api/assessment/tests", {
+        method: "GET",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch available tests")
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        setAvailableTests(data.tests || [])
+      } else {
+        throw new Error(data.message || "Failed to fetch available tests")
+      }
+    } catch (error) {
+      console.error("Error fetching available tests:", error)
+      toast.error("Failed to load available tests. Please try again.")
+    }
+  }
+
+  const fetchInvitations = async () => {
+    try {
+      const response = await fetch(`/api/assessment/invitations/by-candidate/${candidateId}`, {
+        method: "GET",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch invitations")
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        setInvitations(data.invitations || [])
+      } else {
+        throw new Error(data.message || "Failed to fetch invitations")
+      }
+    } catch (error) {
+      console.error("Error fetching invitations:", error)
+      toast.error("Failed to load invitations. Please try again.")
+    }
+  }
+
+  const fetchResults = async () => {
+    try {
+      const response = await fetch(`/api/assessment/results/by-candidate/${candidateId}`, {
+        method: "GET",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch results")
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        setResults(data.results || [])
+      } else {
+        throw new Error(data.message || "Failed to fetch results")
+      }
+    } catch (error) {
+      console.error("Error fetching results:", error)
+      toast.error("Failed to load results. Please try again.")
+    }
+  }
+
+  const fetchVerifications = async () => {
+    try {
+      const response = await fetch(`/api/assessment/verifications/by-candidate/${candidateId}`, {
+        method: "GET",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch verifications")
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        setVerifications(data.verifications || [])
+      } else {
+        throw new Error(data.message || "Failed to fetch verifications")
+      }
+    } catch (error) {
+      console.error("Error fetching verifications:", error)
+      toast.error("Failed to load verifications. Please try again.")
+    }
+  }
+
+  const handleSendInvitation = async () => {
+    if (!selectedTest) {
+      toast.error("Please select a test")
+      return
+    }
+
+    try {
+      setIsSendingInvitation(true)
+
+      const response = await fetch("/api/assessment/invitations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          candidateId,
+          testId: selectedTest,
+          sendEmail: true,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to send invitation")
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success("Invitation sent successfully")
+        setShowInviteDialog(false)
+        setSelectedTest(null)
+        fetchInvitations() // Refresh invitations
+      } else {
+        throw new Error(data.message || "Failed to send invitation")
+      }
+    } catch (error) {
+      console.error("Error sending invitation:", error)
+      toast.error((error as Error).message || "Failed to send invitation")
+    } finally {
+      setIsSendingInvitation(false)
+    }
+  }
+
+  const handleResendInvitation = async (invitationId: string) => {
+    try {
+      const response = await fetch(`/api/assessment/invitations/${invitationId}/resend`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to resend invitation")
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success("Invitation resent successfully")
+        fetchInvitations() // Refresh invitations
+      } else {
+        throw new Error(data.message || "Failed to resend invitation")
+      }
+    } catch (error) {
+      console.error("Error resending invitation:", error)
+      toast.error((error as Error).message || "Failed to resend invitation")
+    }
+  }
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    try {
+      const response = await fetch(`/api/assessment/invitations/${invitationId}/cancel`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to cancel invitation")
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success("Invitation cancelled successfully")
+        fetchInvitations() // Refresh invitations
+      } else {
+        throw new Error(data.message || "Failed to cancel invitation")
+      }
+    } catch (error) {
+      console.error("Error cancelling invitation:", error)
+      toast.error((error as Error).message || "Failed to cancel invitation")
+    }
+  }
+
+  const handleDeclareResult = async (resultId: string) => {
+    try {
+      const response = await fetch(`/api/assessment/results/${resultId}/declare`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to declare result")
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success("Result declared and email sent to candidate")
+        fetchResults() // Refresh results
+      } else {
+        throw new Error(data.message || "Failed to declare result")
+      }
+    } catch (error) {
+      console.error("Error declaring result:", error)
+      toast.error((error as Error).message || "Failed to declare result")
+    }
+  }
+
+  const handleDownloadResult = async (resultId: string) => {
+    try {
+      const response = await fetch(`/api/assessment/results/${resultId}/download`, {
+        method: "GET",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to download result")
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob()
+
+      // Create a download link and trigger download
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `result-${resultId}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success("Result downloaded successfully")
+    } catch (error) {
+      console.error("Error downloading result:", error)
+      toast.error("Failed to download result. Please try again.")
+    }
+  }
+
+  const viewVerification = (verification: VerificationData) => {
+    setSelectedVerification(verification)
+    setShowVerificationDialog(true)
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Active":
+        return "bg-blue-100 text-blue-800 hover:bg-blue-100"
+      case "Completed":
+        return "bg-green-100 text-green-800 hover:bg-green-100"
+      case "Expired":
+        return "bg-red-100 text-red-800 hover:bg-red-100"
+      case "Cancelled":
+        return "bg-gray-100 text-gray-800 hover:bg-gray-100"
+      case "Passed":
+        return "bg-green-100 text-green-800 hover:bg-green-100"
+      case "Failed":
+        return "bg-red-100 text-red-800 hover:bg-red-100"
+      case "Invited":
+        return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+      default:
+        return "bg-gray-100 text-gray-800 hover:bg-gray-100"
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-6">
+        <Toaster position="top-center" />
+        <div className="flex items-center mb-6">
+          <Button variant="ghost" size="sm" className="mr-4" asChild>
+            <Link href="/employee/assessment/candidates">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Link>
+          </Button>
+          <Skeleton className="h-8 w-64" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-32 mb-1" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-32 mb-1" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-32 mb-1" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16" />
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="invitations">
+          <TabsList>
+            <TabsTrigger value="invitations">Invitations</TabsTrigger>
+            <TabsTrigger value="results">Results</TabsTrigger>
+            <TabsTrigger value="verifications">Verifications</TabsTrigger>
+          </TabsList>
+          <div className="mt-4">
+            <Skeleton className="h-64 w-full" />
+          </div>
+        </Tabs>
+      </div>
+    )
+  }
+
+  if (!candidate) {
+    return (
+      <div className="container mx-auto py-6">
+        <Toaster position="top-center" />
+        <div className="flex items-center mb-6">
+          <Button variant="ghost" size="sm" className="mr-4" asChild>
+            <Link href="/employee/assessment/candidates">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Link>
+          </Button>
+          <h1 className="text-3xl font-bold">Candidate Not Found</h1>
+        </div>
+
+        <Card>
+          <CardContent className="py-10 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+            <h2 className="text-xl font-medium mb-2">The requested candidate could not be found</h2>
+            <p className="text-muted-foreground mb-6">
+              The candidate may have been deleted or you may not have permission to view it.
+            </p>
+            <Button asChild>
+              <Link href="/employee/assessment/candidates">View All Candidates</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto py-6">
+      <Toaster position="top-center" />
+
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <Button variant="ghost" size="sm" className="mr-4" asChild>
+            <Link href="/employee/assessment/candidates">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">{candidate.name}</h1>
+            <p className="text-muted-foreground">{candidate.email}</p>
+          </div>
+        </div>
+        <Button onClick={() => setShowInviteDialog(true)}>
+          <Mail className="h-4 w-4 mr-2" />
+          Invite to Test
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Tests Assigned</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{candidate.testsAssigned}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Tests Completed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{candidate.testsCompleted}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Average Score</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{candidate.averageScore}%</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="invitations">
+        <TabsList>
+          <TabsTrigger value="invitations">Invitations</TabsTrigger>
+          <TabsTrigger value="results">Results</TabsTrigger>
+          <TabsTrigger value="verifications">Verifications</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="invitations" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Test Invitations</CardTitle>
+              <CardDescription>View and manage all test invitations sent to {candidate.name}.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {invitations.length > 0 ? (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted/50">
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Test</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Sent</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Expires</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invitations.map((invitation) => (
+                        <tr key={invitation._id} className="border-t hover:bg-muted/30">
+                          <td className="py-3 px-4">{invitation.testName}</td>
+                          <td className="py-3 px-4">
+                            <Badge variant="outline" className={getStatusColor(invitation.status)}>
+                              {invitation.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">{formatDate(invitation.createdAt)}</td>
+                          <td className="py-3 px-4">{formatDate(invitation.expiresAt)}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex gap-2">
+                              {invitation.status === "Active" && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleResendInvitation(invitation._id)}
+                                  >
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Resend
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleCancelInvitation(invitation._id)}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancel
+                                  </Button>
+                                </>
+                              )}
+                              {invitation.status === "Completed" && (
+                                <Button variant="outline" size="sm" asChild>
+                                  <Link href={`/employee/assessment/results?invitation=${invitation._id}`}>
+                                    View Result
+                                  </Link>
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Invitations Yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    You haven't sent any test invitations to this candidate yet.
+                  </p>
+                  <Button onClick={() => setShowInviteDialog(true)}>Invite to Test</Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="results" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Test Results</CardTitle>
+              <CardDescription>View all test results for {candidate.name}.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {results.length > 0 ? (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted/50">
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Test</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Score</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Duration</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Completed</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Declared</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.map((result) => (
+                        <tr key={result._id} className="border-t hover:bg-muted/30">
+                          <td className="py-3 px-4">{result.testName}</td>
+                          <td className="py-3 px-4">{result.score}%</td>
+                          <td className="py-3 px-4">
+                            <Badge variant="outline" className={getStatusColor(result.status)}>
+                              {result.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">{result.duration} min</td>
+                          <td className="py-3 px-4">{formatDate(result.completionDate)}</td>
+                          <td className="py-3 px-4">
+                            {result.resultsDeclared ? (
+                              <CheckCircle className="h-5 w-5 text-green-500" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-red-500" />
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" asChild>
+                                <Link href={`/employee/assessment/results/${result._id}`}>View</Link>
+                              </Button>
+                              {!result.resultsDeclared && (
+                                <Button variant="outline" size="sm" onClick={() => handleDeclareResult(result._id)}>
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Declare
+                                </Button>
+                              )}
+                              <Button variant="outline" size="sm" onClick={() => handleDownloadResult(result._id)}>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Results Yet</h3>
+                  <p className="text-muted-foreground mb-4">This candidate hasn't completed any tests yet.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="verifications" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>ID Verifications</CardTitle>
+              <CardDescription>View ID and face verification images submitted by {candidate.name}.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {verifications.length > 0 ? (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted/50">
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Test</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">ID Card</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Face</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Submitted</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {verifications.map((verification) => {
+                        // Find the invitation for this verification
+                        const invitation = invitations.find((inv) => inv._id === verification.invitationId)
+
+                        return (
+                          <tr key={verification._id} className="border-t hover:bg-muted/30">
+                            <td className="py-3 px-4">{invitation?.testName || "Unknown Test"}</td>
+                            <td className="py-3 px-4">
+                              {verification.idCardImageUrl ? (
+                                <CheckCircle className="h-5 w-5 text-green-500" />
+                              ) : (
+                                <XCircle className="h-5 w-5 text-red-500" />
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {verification.faceImageUrl ? (
+                                <CheckCircle className="h-5 w-5 text-green-500" />
+                              ) : (
+                                <XCircle className="h-5 w-5 text-red-500" />
+                              )}
+                            </td>
+                            <td className="py-3 px-4">{formatDate(verification.createdAt)}</td>
+                            <td className="py-3 px-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => viewVerification(verification)}
+                                disabled={!verification.idCardImageUrl && !verification.faceImageUrl}
+                              >
+                                View Images
+                              </Button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Verifications Yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    This candidate hasn't submitted any ID verifications yet.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Invite Dialog */}
+      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite to Test</DialogTitle>
+            <DialogDescription>
+              Send a test invitation to {candidate.name} ({candidate.email}).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium mb-2">Select Test</h3>
+                <div className="space-y-2">
+                  {availableTests.length > 0 ? (
+                    availableTests.map((test) => (
+                      <div key={test._id} className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id={`test-${test._id}`}
+                          name="test"
+                          value={test._id}
+                          checked={selectedTest === test._id}
+                          onChange={() => setSelectedTest(test._id)}
+                          className="h-4 w-4 text-primary focus:ring-primary border-input"
+                        />
+                        <label htmlFor={`test-${test._id}`} className="text-sm font-medium">
+                          {test.name}
+                          <span className="text-xs text-muted-foreground ml-2">
+                            ({test.duration} min, {test.passingScore}% to pass)
+                          </span>
+                        </label>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No tests available. Create a test first.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendInvitation} disabled={!selectedTest || isSendingInvitation}>
+              {isSendingInvitation ? (
+                <>
+                  <span className="animate-spin mr-2">⟳</span> Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Invitation
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Verification Images Dialog */}
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Verification Images</DialogTitle>
+            <DialogDescription>ID and face verification images submitted by {candidate.name}.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {selectedVerification?.idCardImageUrl && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">ID Card</h3>
+                  <div className="border rounded-md overflow-hidden">
+                    <img
+                      src={selectedVerification.idCardImageUrl || "/placeholder.svg"}
+                      alt="ID Card"
+                      className="w-full h-auto object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+              {selectedVerification?.faceImageUrl && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Face</h3>
+                  <div className="border rounded-md overflow-hidden">
+                    <img
+                      src={selectedVerification.faceImageUrl || "/placeholder.svg"}
+                      alt="Face"
+                      className="w-full h-auto object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowVerificationDialog(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

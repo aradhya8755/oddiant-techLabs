@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
     }
 
-    const jobId = await params.id
+    const jobId = params.id
 
     // Connect to database
     const { db } = await connectToDatabase()

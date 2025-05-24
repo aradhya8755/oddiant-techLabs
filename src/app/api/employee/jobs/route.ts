@@ -3,52 +3,97 @@ import { connectToDatabase } from "@/lib/mongodb"
 import { getUserFromRequest } from "@/lib/auth"
 import { ObjectId } from "mongodb"
 
+export async function POST(request: NextRequest) {
+  try {
+    // Get user ID from request
+    const userId = await getUserFromRequest(request)
+
+    if (!userId) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 })
+    }
+
+    // Get job data from request body
+    const jobData = await request.json()
+
+    // Connect to database
+    const { db } = await connectToDatabase()
+
+    // Find employee to verify
+    const employee = await db.collection("employees").findOne({
+      $or: [{ _id: new ObjectId(userId) }, { _id: userId }],
+    })
+
+    if (!employee) {
+      return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 })
+    }
+
+    // Create new job with employee ID
+    const newJob = {
+      ...jobData,
+      employerId: new ObjectId(userId), // Add employer ID for isolation
+      companyId: employee.companyId || userId, // Add company ID for isolation
+      companyName: employee.companyName || "Unknown Company",
+      applicants: 0,
+      interviews: 0,
+      status: "open",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    // Insert job into database
+    const result = await db.collection("jobs").insertOne(newJob)
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Job created successfully",
+        jobId: result.insertedId,
+      },
+      { status: 201 },
+    )
+  } catch (error) {
+    console.error("Error creating job:", error)
+    return NextResponse.json({ success: false, message: "Failed to create job" }, { status: 500 })
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get user ID from request
     const userId = await getUserFromRequest(request)
 
     if (!userId) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 })
     }
 
     // Connect to database
     const { db } = await connectToDatabase()
 
-    // Find employee to get company ID
-    const employee = await db.collection("employees").findOne({ _id: new ObjectId(userId) })
+    // Find employee to verify
+    const employee = await db.collection("employees").findOne({
+      $or: [{ _id: new ObjectId(userId) }, { _id: userId }],
+    })
 
     if (!employee) {
-      return NextResponse.json({ message: "Employee not found" }, { status: 404 })
+      return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 })
     }
 
-    // Get job postings for this company
-    const jobs = await db.collection("jobs").find({}).toArray()
+    // Get company ID for data isolation
+    const companyId = employee.companyId || employee._id.toString()
 
-    // For each job, calculate real-time stats
-    const jobsWithStats = await Promise.all(
-      jobs.map(async (job) => {
-        // Count applicants
-        const applicantsCount = await db.collection("job_applications").countDocuments({ jobId: job._id })
-
-        // Count interviews
-        const interviewsCount = await db.collection("interviews").countDocuments({ jobId: job._id })
-
-        // Calculate days left (30 days from creation by default)
-        const creationDate = job.createdAt ? new Date(job.createdAt) : new Date()
-        const expiryDate = new Date(creationDate)
-        expiryDate.setDate(expiryDate.getDate() + 30)
-        const today = new Date()
-        const daysLeft = Math.max(0, Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
-
-        return {
-          ...job,
-          applicants: applicantsCount,
-          interviews: interviewsCount,
-          daysLeft: daysLeft,
-        }
-      }),
-    )
+    // Find all jobs for this employee only
+    const jobs = await db
+      .collection("jobs")
+      .find({
+        $or: [
+          { employerId: new ObjectId(userId) },
+          { companyId: companyId },
+          { employerId: userId },
+          { companyId: new ObjectId(companyId) },
+        ],
+      })
+      .sort({ createdAt: -1 })
+      .toArray()
 
     // Add cache control headers to prevent caching
     const headers = new Headers()
@@ -57,7 +102,7 @@ export async function GET(request: NextRequest) {
     headers.append("Expires", "0")
 
     return NextResponse.json(
-      { success: true, jobs: jobsWithStats },
+      { success: true, jobs },
       {
         status: 200,
         headers: headers,
@@ -66,47 +111,5 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching jobs:", error)
     return NextResponse.json({ success: false, message: "Failed to fetch jobs" }, { status: 500 })
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    // Get user ID from request
-    const userId = await getUserFromRequest(request)
-
-    if (!userId) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
-    }
-
-    // Connect to database
-    const { db } = await connectToDatabase()
-
-    // Find employee to get company ID
-    const employee = await db.collection("employees").findOne({ _id: new ObjectId(userId) })
-
-    if (!employee) {
-      return NextResponse.json({ message: "Employee not found" }, { status: 404 })
-    }
-
-    // Get job data from request body
-    const jobData = await request.json()
-
-    // Add additional fields - explicitly set status to "open"
-    const newJob = {
-      ...jobData,
-      employeeId: new ObjectId(userId),
-      companyId: employee.companyId,
-      status: "open", // Explicitly set status to "open"
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-    // Insert job into database
-    const result = await db.collection("jobs").insertOne(newJob)
-
-    return NextResponse.json({ success: true, jobId: result.insertedId }, { status: 201 })
-  } catch (error) {
-    console.error("Error creating job:", error)
-    return NextResponse.json({ success: false, message: "Failed to create job" }, { status: 500 })
   }
 }

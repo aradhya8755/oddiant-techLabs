@@ -27,22 +27,26 @@ export function ApplicantStatus({ applicantId, currentStatus, jobId }: Applicant
   const [isUpdating, setIsUpdating] = useState(false)
   const [comment, setComment] = useState("")
   const [showCommentDialog, setShowCommentDialog] = useState(false)
-  const [selectedStatus, setSelectedStatus] = useState(currentStatus)
+  const [selectedStatus, setSelectedStatus] = useState(currentStatus || "Applied")
+  const [status, setStatus] = useState(currentStatus || "Applied")
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Shortlisted":
+    const statusLower = status?.toLowerCase() || "applied"
+
+    switch (statusLower) {
+      case "shortlisted":
       case "select":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-      case "Interview":
+      case "interview":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-      case "Hired":
+      case "hired":
         return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
-      case "Rejected":
+      case "rejected":
       case "reject":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
       case "hold":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+      case "applied":
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
     }
@@ -57,8 +61,26 @@ export function ApplicantStatus({ applicantId, currentStatus, jobId }: Applicant
   const submitStatusChange = async () => {
     setIsUpdating(true)
     try {
-      // Update status
-      const statusResponse = await fetch(`/api/employee/candidates/${applicantId}/status`, {
+      // First update the job application status
+      const applicationResponse = await fetch(`/api/job-applications/update`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          candidateId: applicantId,
+          jobId,
+          status: selectedStatus,
+          comment: comment.trim() || undefined,
+        }),
+      })
+
+      if (!applicationResponse.ok) {
+        throw new Error("Failed to update application status")
+      }
+
+      // Then update the candidate status
+      const candidateResponse = await fetch(`/api/employee/candidates/${applicantId}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -66,34 +88,41 @@ export function ApplicantStatus({ applicantId, currentStatus, jobId }: Applicant
         body: JSON.stringify({
           status: selectedStatus,
           jobId,
+          comment: comment.trim() || undefined,
         }),
       })
 
-      if (!statusResponse.ok) {
-        throw new Error("Failed to update applicant status")
-      }
+      if (!candidateResponse.ok) {
+        console.log("Failed to update in candidates collection, trying students collection")
 
-      // Add comment if provided
-      if (comment.trim()) {
-        const commentResponse = await fetch(`/api/employee/candidates/${applicantId}/comments`, {
-          method: "POST",
+        // If that fails, try updating in the students collection
+        const studentResponse = await fetch(`/api/student/${applicantId}/status`, {
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            comment,
+            status: selectedStatus,
             jobId,
+            comment: comment.trim() || undefined,
           }),
         })
 
-        if (!commentResponse.ok) {
-          throw new Error("Failed to add comment")
+        if (!studentResponse.ok) {
+          console.warn("Failed to update status in both collections, but application was updated")
         }
       }
 
+      // Update local state
+      setStatus(selectedStatus)
       toast.success("Applicant status updated successfully")
       setShowCommentDialog(false)
       setComment("")
+
+      // Refresh the page to show updated status
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (error) {
       console.error("Error updating applicant status:", error)
       toast.error("Failed to update applicant status")
@@ -105,9 +134,10 @@ export function ApplicantStatus({ applicantId, currentStatus, jobId }: Applicant
   return (
     <>
       <select
-        value={currentStatus}
+        value={status}
         onChange={handleStatusChange}
-        className={`px-2 py-1 rounded-md text-sm ${getStatusColor(currentStatus)}`}
+        className={`px-2 py-1 rounded-md text-sm ${getStatusColor(status)}`}
+        disabled={isUpdating}
       >
         <option value="Applied">Applied</option>
         <option value="hold">Hold</option>
@@ -146,7 +176,7 @@ export function ApplicantStatus({ applicantId, currentStatus, jobId }: Applicant
               variant="outline"
               onClick={() => {
                 setShowCommentDialog(false)
-                setSelectedStatus(currentStatus) // Reset to original status
+                setSelectedStatus(status) // Reset to original status
               }}
             >
               Cancel

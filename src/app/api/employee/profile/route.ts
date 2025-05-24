@@ -25,7 +25,19 @@ export async function GET(request: NextRequest) {
     // Remove sensitive information
     const { password, ...employeeData } = employee
 
-    return NextResponse.json({ success: true, employee: employeeData }, { status: 200 })
+    // Add cache control headers to prevent caching
+    const headers = new Headers()
+    headers.append("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+    headers.append("Pragma", "no-cache")
+    headers.append("Expires", "0")
+
+    return NextResponse.json(
+      { success: true, employee: employeeData },
+      {
+        status: 200,
+        headers: headers,
+      },
+    )
   } catch (error) {
     console.error("Error fetching employee profile:", error)
     return NextResponse.json({ success: false, message: "Failed to fetch profile" }, { status: 500 })

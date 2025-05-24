@@ -24,12 +24,12 @@ export default function EmployeeLoginPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch("/api/auth/employee/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password, userType: "employee" }),
+        body: JSON.stringify({ email, password }),
       })
 
       const data = await response.json()
@@ -73,7 +73,7 @@ export default function EmployeeLoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Company Email</Label>
+              <Label htmlFor="email">Email Address</Label>
               <Input
                 id="email"
                 type="email"
@@ -82,6 +82,7 @@ export default function EmployeeLoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
+              <p className="text-xs text-gray-500">You can use your company email or alternative email if you have entered.</p>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">

@@ -14,22 +14,67 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json()
-    const { firstName, lastName, phone, designation } = body
+    const { firstName, lastName, phone, designation, alternativeEmail, email } = body
 
     // Connect to database
     const { db } = await connectToDatabase()
+
+    // Basic validation
+    if (!firstName || !lastName) {
+      return NextResponse.json({ message: "First name and last name are required" }, { status: 400 })
+    }
+
+    // Email validation if provided
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(email)) {
+        return NextResponse.json({ message: "Invalid email format" }, { status: 400 })
+      }
+
+      // Check if email is already in use by another employee
+      const existingEmployee = await db.collection("employees").findOne({
+        email: email,
+        _id: { $ne: new ObjectId(userId) },
+      })
+
+      if (existingEmployee) {
+        return NextResponse.json({ message: "Email is already in use by another account" }, { status: 400 })
+      }
+    }
+
+    // Alternative email validation if provided
+    if (alternativeEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(alternativeEmail)) {
+        return NextResponse.json({ message: "Invalid alternative email format" }, { status: 400 })
+      }
+
+      // Check if primary and alternative emails are the same
+      if (email && email.toLowerCase() === alternativeEmail.toLowerCase()) {
+        return NextResponse.json({ message: "Primary and alternative emails cannot be the same" }, { status: 400 })
+      }
+    }
+
+    // Prepare update fields
+    const updateFields: any = {
+      firstName,
+      lastName,
+      phone,
+      designation,
+      alternativeEmail,
+      updatedAt: new Date(),
+    }
+
+    // Only update email if provided
+    if (email) {
+      updateFields.email = email
+    }
 
     // Update employee profile
     await db.collection("employees").updateOne(
       { _id: new ObjectId(userId) },
       {
-        $set: {
-          firstName,
-          lastName,
-          phone,
-          designation,
-          updatedAt: new Date(),
-        },
+        $set: updateFields,
       },
     )
 
